@@ -85,6 +85,8 @@ export type TelegramMessageContext = {
   removeAckAfterReply: boolean;
   statusReactionController: StatusReactionController | null;
   accountId: string;
+  /** Telegram Business connection ID. Set when the message arrived via a business account connection. */
+  businessConnectionId?: string;
 };
 
 export const buildTelegramMessageContext = async ({
@@ -250,7 +252,10 @@ export const buildTelegramMessageContext = async ({
     }
   };
 
+  // Business messages are pre-authorized by the connection itself; skip DM pairing.
+  const isBusinessMessage = typeof options?.businessConnectionId === "string";
   if (
+    !isBusinessMessage &&
     !(await enforceTelegramDmAccess({
       isGroup,
       dmPolicy: effectiveDmPolicy,
@@ -520,5 +525,6 @@ export const buildTelegramMessageContext = async ({
     removeAckAfterReply,
     statusReactionController,
     accountId: account.accountId,
+    businessConnectionId: options?.businessConnectionId,
   };
 };

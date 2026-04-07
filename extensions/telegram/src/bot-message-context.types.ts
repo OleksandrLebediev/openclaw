@@ -21,6 +21,8 @@ export type TelegramMessageContextOptions = {
   messageIdOverride?: string;
   receivedAtMs?: number;
   ingressBuffer?: "inbound-debounce" | "text-fragment";
+  /** Telegram Business connection ID. Present when the message arrived via a business account connection. */
+  businessConnectionId?: string;
 };
 
 export type TelegramLogger = {

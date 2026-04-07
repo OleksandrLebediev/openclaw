@@ -187,6 +187,7 @@ export const dispatchTelegramMessage = async ({
     reactionApi,
     removeAckAfterReply,
     statusReactionController,
+    businessConnectionId,
   } = context;
 
   const draftMaxChars = Math.min(textLimit, 4096);
@@ -480,6 +481,7 @@ export const dispatchTelegramMessage = async ({
     chunkMode,
     linkPreview: telegramCfg.linkPreview,
     replyQuoteText,
+    businessConnectionId,
   };
   const silentErrorReplies = telegramCfg.silentErrorReplies === true;
   const applyTextToPayload = (payload: ReplyPayload, text: string): ReplyPayload => {

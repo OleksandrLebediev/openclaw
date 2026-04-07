@@ -1,71 +1,191 @@
 ---
-
-## name: openclaw-claw-server-deploy
-
+name: openclaw-claw-server-deploy
 description: >-
-Deploy or refresh OpenClaw on a remote Linux host reachable as `ssh claw`: pull a Git branch under /root/openclaw, run pnpm install/build, reinstall the global CLI, and restart the user-scoped openclaw-gateway systemd unit. Use when the operator asks to update the claw server, deploy after a push, pull main/feature on the gateway host, or restart OpenClaw gateway on that machine.
+  Deploy or refresh the operator's OpenClaw fork on the remote gateway host
+  (SSH alias `claw`). Covers both first-time setup (clone fork, checkout branch,
+  install deps, create systemd service) and routine redeploy (pull branch, build,
+  reinstall global CLI, restart gateway). Use when the operator asks to set up
+  claw for the first time, update the claw server, deploy after a push, pull
+  main or a feature branch on the gateway host, or restart the OpenClaw gateway.
+---
 
 # OpenClaw claw server deploy
 
-Use this skill when the operator wants the **remote gateway host** (SSH alias `**claw`**) updated from Git and the **gateway service restarted**. Keep commands **non-interactive\*\* (`BatchMode` SSH, no prompts).
+Use this skill when the operator wants the **remote gateway host** (SSH alias `claw`) updated from Git and the **gateway service restarted**.
+
+**First time on this server?** → Follow [First-time setup](#first-time-setup) first, then continue with the deploy algorithm.
 
 ## Assumptions (override if the operator says otherwise)
 
-- **SSH target**: host alias `claw` (from `~/.ssh/config` on the machine running the agent).
-- **Repo path on server**: `/root/openclaw`.
-- **Service**: user systemd unit `openclaw-gateway.service` (path like `~/.config/systemd/user/openclaw-gateway.service`).
-- **Branch**: use the branch the operator names; if unspecified, ask once or default to `main` unless the conversation already fixed a deploy branch.
+| Item                | Default                                                            |
+| ------------------- | ------------------------------------------------------------------ |
+| SSH target          | `claw` (from `~/.ssh/config`)                                      |
+| Repo path on server | `/root/openclaw`                                                   |
+| Fork URL            | ask the operator; example: `https://github.com/<you>/openclaw.git` |
+| Branch              | what the operator names; ask once if unspecified; default `main`   |
+| Service             | user systemd unit `openclaw-gateway.service`                       |
 
-## Deploy sequence (happy path)
+---
 
-Run on the operator’s machine (or agent shell with SSH access):
+## First-time setup
 
-1. **Update Git** (fast-forward only):
+Run this block **once** when `/root/openclaw` does not yet exist on the server.
 
-```bash
- ssh -o BatchMode=yes -o ConnectTimeout=25 claw 'set -e; cd /root/openclaw; git fetch origin; git checkout <BRANCH>; git pull --ff-only origin <BRANCH>; git log -1 --oneline'
-```
-
-2. **Install and build**:
-
-```bash
- ssh -o BatchMode=yes -o ConnectTimeout=25 claw 'set -e; cd /root/openclaw; pnpm install --frozen-lockfile; pnpm build'
-```
-
-- Build may print **warnings** (for example bundled extension bundler noise on older branches). Treat **non-zero exit** as failure; warnings alone are often acceptable if the operator’s baseline already accepts them.
-
-3. **Global CLI** (matches common operator setup):
+### FT-1 — Check prerequisites on the server
 
 ```bash
- ssh -o BatchMode=yes -o ConnectTimeout=25 claw 'set -e; cd /root/openclaw; sudo npm install -g .; openclaw --version'
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'node --version; npm --version; git --version'
 ```
 
-- Confirm the printed version’s **commit suffix** matches the expected short SHA after deploy.
-
-4. **Restart gateway**:
+If `pnpm` is missing, install it:
 
 ```bash
- ssh -o BatchMode=yes -o ConnectTimeout=25 claw 'systemctl --user restart openclaw-gateway.service && sleep 2 && systemctl --user status openclaw-gateway.service --no-pager'
+ssh -o BatchMode=yes claw 'npm install -g pnpm'
 ```
 
-5. **Optional verification**: `openclaw channels status --probe` on the server, or `journalctl --user -u openclaw-gateway.service -n 80 --no-pager` if something looks wrong.
-
-## Discovery if layout differs
-
-If `openclaw-gateway.service` is not user-scoped, check:
+### FT-2 — Clone the fork
 
 ```bash
-ssh claw 'systemctl list-units --type=service --all | grep -i openclaw; systemctl --user list-units --type=service --all | grep -i openclaw'
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'git clone <FORK_URL> /root/openclaw'
 ```
 
-Prefer **user** `openclaw-gateway.service` when it exists and is the active deployment.
+Replace `<FORK_URL>` with the operator's fork URL, e.g. `https://github.com/yourname/openclaw.git`.
 
-## Push from the server
+> If the server needs to clone over SSH (private fork), ensure an SSH deploy key is added to the fork on GitHub first, then use `git@github.com:yourname/openclaw.git`.
 
-`git push` over `**https://github.com/...`** from `claw` often fails without stored credentials (`could not read Username`). Deploys should assume **pull from origin** after the operator pushes from a trusted workstation, or the operator should switch `origin` to **SSH\*\* and install a deploy key if server-side push is required.
+### FT-3 — Check out the target branch
 
-## Safety
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'set -e
+   cd /root/openclaw
+   git fetch origin
+   git checkout <BRANCH>
+   git log -1 --oneline'
+```
 
-- Use `git pull --ff-only` to avoid merge commits on the server.
-- Do not put real tokens, gateway secrets, or hostnames into this skill; keep examples generic aside from the agreed `claw` alias and `/root/openclaw` path.
-- Do not run destructive git commands (`reset --hard`, `clean -fdx`) unless the operator explicitly requests recovery from a bad state.
+### FT-4 — Install deps and build
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'set -e
+   cd /root/openclaw
+   pnpm install --frozen-lockfile
+   pnpm build'
+```
+
+### FT-5 — Install the global CLI
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'set -e
+   cd /root/openclaw
+   sudo npm install -g .
+   openclaw --version'
+```
+
+After first-time setup is complete, proceed with **Step 4 — Restart the gateway** in the deploy algorithm below (steps 1–3 are already done).
+
+---
+
+## Deploy algorithm (run in order)
+
+### Step 1 — Pull the branch
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'set -e
+   cd /root/openclaw
+   git fetch origin
+   git checkout <BRANCH>
+   git pull --ff-only origin <BRANCH>
+   git log -1 --oneline'
+```
+
+- Replace `<BRANCH>` with the actual branch name.
+- `--ff-only` prevents accidental merge commits on the server.
+- The final `git log` line confirms the expected short SHA.
+
+### Step 2 — Install deps and build
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'set -e
+   cd /root/openclaw
+   pnpm install --frozen-lockfile
+   pnpm build'
+```
+
+- Non-zero exit = failure; stop and report the error.
+- Bundler warnings on older branches are usually acceptable if the operator's baseline already accepts them.
+
+### Step 3 — Reinstall the global CLI
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'set -e
+   cd /root/openclaw
+   sudo npm install -g .
+   openclaw --version'
+```
+
+- Confirm the printed version's **commit suffix** matches the expected short SHA from step 1.
+
+### Step 4 — Restart the gateway
+
+```bash
+ssh -o BatchMode=yes -o ConnectTimeout=25 claw \
+  'systemctl --user restart openclaw-gateway.service \
+   && sleep 2 \
+   && systemctl --user status openclaw-gateway.service --no-pager'
+```
+
+- Status output should show `active (running)`.
+
+### Step 5 — Verify (optional but recommended)
+
+```bash
+# Check channel connectivity
+ssh -o BatchMode=yes claw 'openclaw channels status --probe'
+
+# Or tail recent logs if something looks wrong
+ssh -o BatchMode=yes claw \
+  'journalctl --user -u openclaw-gateway.service -n 80 --no-pager'
+```
+
+---
+
+## Discovery — if the layout differs
+
+Find the active service unit:
+
+```bash
+ssh claw \
+  'systemctl list-units --type=service --all | grep -i openclaw
+   systemctl --user list-units --type=service --all | grep -i openclaw'
+```
+
+Prefer the **user-scoped** `openclaw-gateway.service` when it exists.
+
+---
+
+## Common issues
+
+| Symptom                                       | Fix                                                                                                                                                   |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --- | -------------------------------------- |
+| `git pull` fails with merge conflict          | Ask operator; do **not** run `reset --hard` without explicit approval                                                                                 |
+| `pnpm: not found`                             | Check PATH: `ssh claw 'which pnpm                                                                                                                     |     | npm -g list pnpm'`; install if missing |
+| `sudo npm install -g .` asks for password     | Ensure passwordless sudo for npm on the server, or switch to a local npm prefix                                                                       |
+| Service fails to restart                      | Run journalctl step above; look for port conflicts or missing config                                                                                  |
+| `git push` from server fails (no credentials) | Deploys should pull from origin after the operator pushes from a workstation; install an SSH deploy key on the server if server-side push is required |
+
+---
+
+## Safety rules
+
+- Use `git pull --ff-only` — never allow merge commits on the server.
+- Do **not** run `git reset --hard` or `git clean -fdx` without explicit operator request.
+- Do **not** store real tokens, secrets, or hostnames in this skill.
+- Run all SSH commands with `BatchMode=yes` — no interactive prompts.

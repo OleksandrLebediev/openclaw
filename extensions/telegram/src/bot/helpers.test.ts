@@ -1,6 +1,7 @@
 import type { Message } from "@grammyjs/types";
 import { describe, expect, it, vi } from "vitest";
 import {
+  buildSendChatActionExtraParams,
   buildTelegramRoutingTarget,
   buildTelegramThreadParams,
   buildTypingThreadParams,
@@ -125,6 +126,27 @@ describe("buildTypingThreadParams", () => {
     { input: 1, expected: { message_thread_id: 1 } },
   ])("builds typing params", ({ input, expected }) => {
     expect(buildTypingThreadParams(input)).toEqual(expected);
+  });
+});
+
+describe("buildSendChatActionExtraParams", () => {
+  it("returns undefined when neither thread nor business id", () => {
+    expect(buildSendChatActionExtraParams({})).toBeUndefined();
+  });
+
+  it("includes business_connection_id for Telegram Business typing", () => {
+    expect(buildSendChatActionExtraParams({ businessConnectionId: "bc-1" })).toEqual({
+      business_connection_id: "bc-1",
+    });
+  });
+
+  it("merges forum thread and business connection", () => {
+    expect(
+      buildSendChatActionExtraParams({
+        messageThreadId: 2,
+        businessConnectionId: "bc-x",
+      }),
+    ).toEqual({ message_thread_id: 2, business_connection_id: "bc-x" });
   });
 });
 

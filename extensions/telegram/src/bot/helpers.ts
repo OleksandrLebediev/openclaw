@@ -257,6 +257,22 @@ export function buildTypingThreadParams(messageThreadId?: number) {
   return { message_thread_id: Math.trunc(messageThreadId) };
 }
 
+/** Extra params for `sendChatAction` (typing / record_voice cues). Business chats require `business_connection_id`. */
+export function buildSendChatActionExtraParams(params: {
+  messageThreadId?: number;
+  businessConnectionId?: string;
+}): { message_thread_id?: number; business_connection_id?: string } | undefined {
+  const thread = buildTypingThreadParams(params.messageThreadId);
+  const bc = params.businessConnectionId;
+  if (!thread && !bc) {
+    return undefined;
+  }
+  return {
+    ...thread,
+    ...(bc ? { business_connection_id: bc } : {}),
+  };
+}
+
 export function resolveTelegramStreamMode(telegramCfg?: {
   streaming?: unknown;
   streamMode?: unknown;

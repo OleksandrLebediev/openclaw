@@ -15,7 +15,7 @@ import { resolveTelegramInboundBody } from "./bot-message-context.body.js";
 import { buildTelegramInboundContextPayload } from "./bot-message-context.session.js";
 import type { BuildTelegramMessageContextParams } from "./bot-message-context.types.js";
 import {
-  buildTypingThreadParams,
+  buildSendChatActionExtraParams,
   extractTelegramForumFlag,
   resolveTelegramForumFlag,
   resolveTelegramThreadSpec,
@@ -231,7 +231,10 @@ export const buildTelegramMessageContext = async ({
         sendChatActionHandler.sendChatAction(
           chatId,
           "typing",
-          buildTypingThreadParams(replyThreadId),
+          buildSendChatActionExtraParams({
+            messageThreadId: replyThreadId,
+            businessConnectionId: options?.businessConnectionId,
+          }),
         ),
     });
   };
@@ -244,7 +247,10 @@ export const buildTelegramMessageContext = async ({
           sendChatActionHandler.sendChatAction(
             chatId,
             "record_voice",
-            buildTypingThreadParams(replyThreadId),
+            buildSendChatActionExtraParams({
+              messageThreadId: replyThreadId,
+              businessConnectionId: options?.businessConnectionId,
+            }),
           ),
       });
     } catch (err) {

@@ -51,6 +51,7 @@ Docs: https://docs.openclaw.ai
 - Hooks/wake: queue direct and mapped wake-hook payloads as untrusted system events so external wake content no longer enters the main session as trusted input. (#62003)
 - Slack/thread mentions: add `channels.slack.thread.requireExplicitMention` so Slack channels that already require mentions can also require explicit `@bot` mentions inside bot-participated threads. (#58276) Thanks @praktika-engineer.
 - Telegram/Business: ignore `business_message` updates from the connected business account user and from outgoing sends on behalf of the business (`sender_business_bot`) so the agent does not reply to the operator’s own traffic.
+- Telegram/Business: pass `business_connection_id` into `sendChatAction` (typing / voice cues) so Telegram stops returning `PEER_ID_INVALID` for business chats.
 
 ## 2026.4.5
 

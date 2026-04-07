@@ -80,6 +80,7 @@ export function buildTelegramSendParams(opts?: {
   replyToMessageId?: number;
   thread?: TelegramThreadSpec | null;
   silent?: boolean;
+  businessConnectionId?: string;
 }): Record<string, unknown> {
   const threadParams = buildTelegramThreadParams(opts?.thread);
   const params: Record<string, unknown> = {};
@@ -93,6 +94,9 @@ export function buildTelegramSendParams(opts?: {
   }
   if (opts?.silent === true) {
     params.disable_notification = true;
+  }
+  if (opts?.businessConnectionId) {
+    params.business_connection_id = opts.businessConnectionId;
   }
   return params;
 }
@@ -111,12 +115,14 @@ export async function sendTelegramText(
     linkPreview?: boolean;
     silent?: boolean;
     replyMarkup?: ReturnType<typeof buildInlineKeyboard>;
+    businessConnectionId?: string;
   },
 ): Promise<number> {
   const baseParams = buildTelegramSendParams({
     replyToMessageId: opts?.replyToMessageId,
     thread: opts?.thread,
     silent: opts?.silent,
+    businessConnectionId: opts?.businessConnectionId,
   });
   // Add link_preview_options when link preview is disabled.
   const linkPreviewEnabled = opts?.linkPreview ?? true;

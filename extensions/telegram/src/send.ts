@@ -100,6 +100,8 @@ type TelegramSendOpts = {
   buttons?: TelegramInlineButtons;
   /** Send image as document to avoid Telegram compression. Defaults to false. */
   forceDocument?: boolean;
+  /** Telegram Business connection ID. Must be forwarded for replies to business account messages. */
+  businessConnectionId?: string;
 };
 
 type TelegramSendResult = {
@@ -719,11 +721,13 @@ export async function sendMessageTelegram(
     );
   };
 
+  const businessConnectionId = opts.businessConnectionId;
   const buildTextParams = (isLastChunk: boolean) =>
-    hasThreadParams || (isLastChunk && replyMarkup)
+    hasThreadParams || (isLastChunk && replyMarkup) || businessConnectionId
       ? {
           ...threadParams,
           ...(isLastChunk && replyMarkup ? { reply_markup: replyMarkup } : {}),
+          ...(businessConnectionId ? { business_connection_id: businessConnectionId } : {}),
         }
       : undefined;
 
@@ -855,6 +859,7 @@ export async function sendMessageTelegram(
     const baseMediaParams = {
       ...(hasThreadParams ? threadParams : {}),
       ...(!needsSeparateText && replyMarkup ? { reply_markup: replyMarkup } : {}),
+      ...(businessConnectionId ? { business_connection_id: businessConnectionId } : {}),
     };
     const mediaParams = {
       ...(htmlCaption ? { caption: htmlCaption, parse_mode: "HTML" as const } : {}),

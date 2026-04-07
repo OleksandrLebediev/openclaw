@@ -61,5 +61,11 @@ export function resolveTelegramAllowedUpdates(): ReadonlyArray<TelegramUpdateTyp
   if (!updates.includes("channel_post")) {
     updates.push("channel_post");
   }
+  if (!updates.includes("business_connection")) {
+    updates.push("business_connection");
+  }
+  if (!updates.includes("business_message")) {
+    updates.push("business_message");
+  }
   return updates;
 }

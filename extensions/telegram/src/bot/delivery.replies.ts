@@ -112,6 +112,7 @@ async function deliverTextReply(params: {
   replyToId?: number;
   replyToMode: ReplyToMode;
   progress: DeliveryProgress;
+  businessConnectionId?: string;
 }): Promise<number | undefined> {
   let firstDeliveredMessageId: number | undefined;
   const chunks = filterEmptyTelegramTextChunks(params.chunkText(params.replyText));
@@ -138,6 +139,7 @@ async function deliverTextReply(params: {
           linkPreview: params.linkPreview,
           silent: params.silent,
           replyMarkup,
+          businessConnectionId: params.businessConnectionId,
         },
       );
       if (firstDeliveredMessageId == null) {
@@ -161,6 +163,7 @@ async function sendPendingFollowUpText(params: {
   replyToId?: number;
   replyToMode: ReplyToMode;
   progress: DeliveryProgress;
+  businessConnectionId?: string;
 }): Promise<void> {
   const chunks = filterEmptyTelegramTextChunks(params.chunkText(params.text));
   await sendChunkedTelegramReplyText({
@@ -179,6 +182,7 @@ async function sendPendingFollowUpText(params: {
         linkPreview: params.linkPreview,
         silent: params.silent,
         replyMarkup,
+        businessConnectionId: params.businessConnectionId,
       });
     },
   });
@@ -210,6 +214,7 @@ async function sendTelegramVoiceFallbackText(opts: {
   silent?: boolean;
   replyMarkup?: ReturnType<typeof buildInlineKeyboard>;
   replyQuoteText?: string;
+  businessConnectionId?: string;
 }): Promise<number | undefined> {
   let firstDeliveredMessageId: number | undefined;
   const chunks = filterEmptyTelegramTextChunks(opts.chunkText(opts.text));
@@ -227,6 +232,7 @@ async function sendTelegramVoiceFallbackText(opts: {
       linkPreview: opts.linkPreview,
       silent: opts.silent,
       replyMarkup: !appliedReplyTo ? opts.replyMarkup : undefined,
+      businessConnectionId: opts.businessConnectionId,
     });
     if (firstDeliveredMessageId == null) {
       firstDeliveredMessageId = messageId;
@@ -257,6 +263,7 @@ async function deliverMediaReply(params: {
   replyToId?: number;
   replyToMode: ReplyToMode;
   progress: DeliveryProgress;
+  businessConnectionId?: string;
 }): Promise<number | undefined> {
   let firstDeliveredMessageId: number | undefined;
   let first = true;
@@ -298,6 +305,7 @@ async function deliverMediaReply(params: {
         replyToMessageId,
         thread: params.thread,
         silent: params.silent,
+        businessConnectionId: params.businessConnectionId,
       }),
     };
     if (isGif) {
@@ -394,6 +402,7 @@ async function deliverMediaReply(params: {
               silent: params.silent,
               replyMarkup: params.replyMarkup,
               replyQuoteText: params.replyQuoteText,
+              businessConnectionId: params.businessConnectionId,
             });
             if (firstDeliveredMessageId == null) {
               firstDeliveredMessageId = fallbackMessageId;
@@ -423,6 +432,7 @@ async function deliverMediaReply(params: {
                 linkPreview: params.linkPreview,
                 silent: params.silent,
                 replyMarkup: params.replyMarkup,
+                businessConnectionId: params.businessConnectionId,
               });
             }
             markReplyApplied(params.progress, replyToMessageId);
@@ -473,6 +483,7 @@ async function deliverMediaReply(params: {
         replyToId: params.replyToId,
         replyToMode: params.replyToMode,
         progress: params.progress,
+        businessConnectionId: params.businessConnectionId,
       });
       pendingFollowUpText = undefined;
     }
@@ -605,6 +616,8 @@ export async function deliverReplies(params: {
   replyQuoteText?: string;
   /** Override media loader (tests). */
   mediaLoader?: typeof loadWebMedia;
+  /** Telegram Business connection ID. Must be forwarded on every send for business messages. */
+  businessConnectionId?: string;
 }): Promise<{ delivered: boolean }> {
   const progress: DeliveryProgress = {
     hasReplied: false,
@@ -688,6 +701,7 @@ export async function deliverReplies(params: {
           replyToId,
           replyToMode: params.replyToMode,
           progress,
+          businessConnectionId: params.businessConnectionId,
         });
       } else {
         firstDeliveredMessageId = await deliverMediaReply({
@@ -709,6 +723,7 @@ export async function deliverReplies(params: {
           replyToId,
           replyToMode: params.replyToMode,
           progress,
+          businessConnectionId: params.businessConnectionId,
         });
       }
       await maybePinFirstDeliveredMessage({

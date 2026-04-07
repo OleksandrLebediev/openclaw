@@ -151,6 +151,7 @@ export const registerTelegramHandlers = ({
     key: string;
     messages: Array<{ msg: Message; ctx: TelegramContext; receivedAtMs: number }>;
     timer: ReturnType<typeof setTimeout>;
+    businessConnectionId?: string;
   };
   const textFragmentBuffer = new Map<string, TextFragmentEntry>();
   let textFragmentProcessing: Promise<void> = Promise.resolve();
@@ -167,6 +168,7 @@ export const registerTelegramHandlers = ({
     debounceKey: string | null;
     debounceLane: TelegramDebounceLane;
     botUsername?: string;
+    businessConnectionId?: string;
   };
   const resolveTelegramDebounceLane = (msg: Message): TelegramDebounceLane => {
     const forwardMeta = msg as {
@@ -244,6 +246,7 @@ export const registerTelegramHandlers = ({
           {
             receivedAtMs: last.receivedAtMs,
             ingressBuffer: "inbound-debounce",
+            businessConnectionId: last.businessConnectionId,
           },
           replyMedia,
         );
@@ -275,6 +278,7 @@ export const registerTelegramHandlers = ({
           ...(messageIdOverride ? { messageIdOverride } : {}),
           receivedAtMs: first.receivedAtMs,
           ingressBuffer: "inbound-debounce",
+          businessConnectionId: first.businessConnectionId,
         },
         replyMedia,
       );
@@ -455,6 +459,7 @@ export const registerTelegramHandlers = ({
         messageIdOverride: String(last.msg.message_id),
         receivedAtMs: first.receivedAtMs,
         ingressBuffer: "text-fragment",
+        businessConnectionId: entry.businessConnectionId,
       });
     } catch (err) {
       runtime.error?.(danger(`text fragment handler failed: ${String(err)}`));
@@ -912,6 +917,7 @@ export const registerTelegramHandlers = ({
     storeAllowFrom: string[];
     sendOversizeWarning: boolean;
     oversizeLogMessage: string;
+    businessConnectionId?: string;
   }) => {
     const {
       ctx,
@@ -922,6 +928,7 @@ export const registerTelegramHandlers = ({
       storeAllowFrom,
       sendOversizeWarning,
       oversizeLogMessage,
+      businessConnectionId,
     } = params;
 
     // Text fragment handling - Telegram splits long pastes into multiple inbound messages (~4096 chars).
@@ -981,6 +988,7 @@ export const registerTelegramHandlers = ({
           key,
           messages: [{ msg, ctx, receivedAtMs: nowMs }],
           timer: setTimeout(() => {}, TELEGRAM_TEXT_FRAGMENT_MAX_GAP_MS),
+          businessConnectionId,
         };
         textFragmentBuffer.set(key, entry);
         scheduleTextFragmentFlush(entry);
@@ -1102,6 +1110,7 @@ export const registerTelegramHandlers = ({
       debounceKey,
       debounceLane,
       botUsername: ctx.me?.username,
+      businessConnectionId,
     });
   };
   bot.on("callback_query", async (ctx) => {
@@ -1700,6 +1709,8 @@ export const registerTelegramHandlers = ({
     sendOversizeWarning: boolean;
     oversizeLogMessage: string;
     errorMessage: string;
+    /** Set when the message arrived via a Telegram Business connection. Bypasses DM pairing. */
+    businessConnectionId?: string;
   };
 
   const handleInboundMessageLike = async (event: InboundTelegramEvent) => {
@@ -1754,7 +1765,12 @@ export const registerTelegramHandlers = ({
         return;
       }
 
-      if (!event.isGroup && (hasInboundMedia(event.msg) || hasReplyTargetMedia(event.msg))) {
+      // Business messages are pre-authorized by the connection; skip DM media pairing.
+      if (
+        !event.businessConnectionId &&
+        !event.isGroup &&
+        (hasInboundMedia(event.msg) || hasReplyTargetMedia(event.msg))
+      ) {
         const dmAuthorized = await enforceTelegramDmAccess({
           isGroup: event.isGroup,
           dmPolicy,
@@ -1780,6 +1796,7 @@ export const registerTelegramHandlers = ({
         storeAllowFrom,
         sendOversizeWarning: event.sendOversizeWarning,
         oversizeLogMessage: event.oversizeLogMessage,
+        businessConnectionId: event.businessConnectionId,
       });
     } catch (err) {
       runtime.error?.(danger(`${event.errorMessage}: ${String(err)}`));
@@ -1872,6 +1889,56 @@ export const registerTelegramHandlers = ({
       sendOversizeWarning: false,
       oversizeLogMessage: "channel post media exceeds size limit",
       errorMessage: "channel_post handler failed",
+    });
+  });
+
+  // Handle Telegram Business connection/disconnection events.
+  // No agent routing needed — log only so the operator can observe state.
+  bot.on("business_connection", async (ctx) => {
+    try {
+      const conn = ctx.businessConnection;
+      if (!conn) {
+        return;
+      }
+      const status = conn.is_enabled ? "connected" : "disconnected";
+      const userId = conn.user?.id ?? "unknown";
+      logVerbose(`telegram: business_connection ${status} id=${conn.id} user=${userId}`);
+    } catch (err) {
+      runtime.error?.(danger(`telegram business_connection handler failed: ${String(err)}`));
+    }
+  });
+
+  // Handle messages sent to the business account owner's chats.
+  // Routes through the standard message pipeline with business_connection_id so
+  // outbound replies are sent on behalf of the connected business account.
+  bot.on("business_message", async (ctx) => {
+    const msg = ctx.businessMessage;
+    if (!msg) {
+      return;
+    }
+    const businessConnectionId =
+      typeof (msg as { business_connection_id?: unknown }).business_connection_id === "string"
+        ? (msg as { business_connection_id: string }).business_connection_id
+        : undefined;
+    if (!businessConnectionId) {
+      logVerbose("telegram: business_message missing business_connection_id; skipping");
+      return;
+    }
+    const isForum = false; // Business DMs are never forum chats
+    await handleInboundMessageLike({
+      ctxForDedupe: ctx,
+      ctx: buildSyntheticContext(ctx, msg),
+      msg,
+      chatId: msg.chat.id,
+      isGroup: false,
+      isForum,
+      senderId: msg.from?.id != null ? String(msg.from.id) : "",
+      senderUsername: msg.from?.username ?? "",
+      requireConfiguredGroup: false,
+      sendOversizeWarning: true,
+      oversizeLogMessage: "business message media exceeds size limit",
+      errorMessage: "business_message handler failed",
+      businessConnectionId,
     });
   });
 };

@@ -286,6 +286,33 @@ export function resolveTelegramDirectPeerId(params: {
   return String(params.chatId);
 }
 
+/**
+ * Whether a `business_message` update should not be routed to the agent.
+ * Skips outgoing sends on behalf of the business (`sender_business_bot`), bot-authored
+ * echoes, and messages typed by the connected business account user.
+ */
+export function shouldSkipTelegramBusinessInboundMessage(params: {
+  msg: Message;
+  botUserId?: number;
+  businessOwnerUserId?: number;
+}): boolean {
+  const { msg, botUserId, businessOwnerUserId } = params;
+  if (msg.sender_business_bot != null) {
+    return true;
+  }
+  const fromId = msg.from?.id;
+  if (fromId == null) {
+    return false;
+  }
+  if (botUserId != null && fromId === botUserId) {
+    return true;
+  }
+  if (businessOwnerUserId != null && fromId === businessOwnerUserId) {
+    return true;
+  }
+  return false;
+}
+
 export function buildTelegramGroupFrom(chatId: number | string, messageThreadId?: number) {
   return `telegram:group:${buildTelegramGroupPeerId(chatId, messageThreadId)}`;
 }

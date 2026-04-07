@@ -71,6 +71,7 @@ import {
   resolveTelegramForumFlag,
   resolveTelegramForumThreadId,
   resolveTelegramGroupAllowFromContext,
+  shouldSkipTelegramBusinessInboundMessage,
   withResolvedTelegramForumFlag,
 } from "./bot/helpers.js";
 import type { TelegramContext, TelegramGetChat } from "./bot/types.js";
@@ -146,6 +147,9 @@ export const registerTelegramHandlers = ({
 
   const mediaGroupBuffer = new Map<string, MediaGroupEntry>();
   let mediaGroupProcessing: Promise<void> = Promise.resolve();
+
+  /** business_connection_id → Telegram user id of the account that connected the bot. */
+  const businessConnectionOwnerUserIds = new Map<string, number>();
 
   type TextFragmentEntry = {
     key: string;
@@ -1900,6 +1904,11 @@ export const registerTelegramHandlers = ({
       if (!conn) {
         return;
       }
+      if (conn.is_enabled && typeof conn.user?.id === "number") {
+        businessConnectionOwnerUserIds.set(conn.id, conn.user.id);
+      } else {
+        businessConnectionOwnerUserIds.delete(conn.id);
+      }
       const status = conn.is_enabled ? "connected" : "disconnected";
       const userId = conn.user?.id ?? "unknown";
       logVerbose(`telegram: business_connection ${status} id=${conn.id} user=${userId}`);
@@ -1924,6 +1933,33 @@ export const registerTelegramHandlers = ({
       logVerbose("telegram: business_message missing business_connection_id; skipping");
       return;
     }
+
+    let ownerUserId = businessConnectionOwnerUserIds.get(businessConnectionId);
+    if (ownerUserId == null) {
+      try {
+        const conn = await ctx.getBusinessConnection();
+        if (conn.is_enabled && typeof conn.user?.id === "number") {
+          ownerUserId = conn.user.id;
+          businessConnectionOwnerUserIds.set(businessConnectionId, ownerUserId);
+        }
+      } catch {
+        // Stale id or transient API errors; proceed without owner match (still filter sender_business_bot).
+      }
+    }
+
+    if (
+      shouldSkipTelegramBusinessInboundMessage({
+        msg,
+        botUserId: ctx.me?.id,
+        businessOwnerUserId: ownerUserId,
+      })
+    ) {
+      logVerbose(
+        `telegram: skip business_message (outgoing or business owner) conn=${businessConnectionId} chat=${msg.chat.id}`,
+      );
+      return;
+    }
+
     const isForum = false; // Business DMs are never forum chats
     await handleInboundMessageLike({
       ctxForDedupe: ctx,

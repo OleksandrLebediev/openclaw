@@ -1,3 +1,4 @@
+import type { Message } from "@grammyjs/types";
 import { describe, expect, it, vi } from "vitest";
 import {
   buildTelegramRoutingTarget,
@@ -11,6 +12,7 @@ import {
   resolveTelegramDirectPeerId,
   resolveTelegramForumFlag,
   resolveTelegramForumThreadId,
+  shouldSkipTelegramBusinessInboundMessage,
 } from "./helpers.js";
 
 describe("resolveTelegramForumThreadId", () => {
@@ -137,6 +139,61 @@ describe("resolveTelegramDirectPeerId", () => {
     expect(resolveTelegramDirectPeerId({ chatId: 777777777, senderId: undefined })).toBe(
       "777777777",
     );
+  });
+});
+
+describe("shouldSkipTelegramBusinessInboundMessage", () => {
+  const privateChatMsg = (partial: Partial<Message>): Message =>
+    ({
+      message_id: 1,
+      date: 1,
+      chat: { id: 100, type: "private", first_name: "U" },
+      ...partial,
+    }) as Message;
+
+  it("returns true when sender_business_bot is set", () => {
+    expect(
+      shouldSkipTelegramBusinessInboundMessage({
+        msg: privateChatMsg({
+          from: { id: 50, is_bot: false, first_name: "c" },
+          sender_business_bot: { id: 99, is_bot: true, first_name: "B" },
+        }),
+        botUserId: 99,
+        businessOwnerUserId: 1,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true when from matches bot id", () => {
+    expect(
+      shouldSkipTelegramBusinessInboundMessage({
+        msg: privateChatMsg({ from: { id: 42, is_bot: true, first_name: "bot" } }),
+        botUserId: 42,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns true when from matches business owner id", () => {
+    expect(
+      shouldSkipTelegramBusinessInboundMessage({
+        msg: privateChatMsg({ from: { id: 7, is_bot: false, first_name: "owner" } }),
+        businessOwnerUserId: 7,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false for a customer message", () => {
+    expect(
+      shouldSkipTelegramBusinessInboundMessage({
+        msg: privateChatMsg({ from: { id: 200, is_bot: false, first_name: "cust" } }),
+        botUserId: 99,
+        businessOwnerUserId: 7,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when from is missing and there is no sender_business_bot", () => {
+    expect(shouldSkipTelegramBusinessInboundMessage({ msg: privateChatMsg({}) })).toBe(false);
   });
 });
 

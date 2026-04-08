@@ -4,6 +4,7 @@ import {
   resolveCronStyleNow,
   SILENT_REPLY_TOKEN,
   type MemoryFlushPlan,
+  type MemoryFlushUserContext,
   type OpenClawConfig,
 } from "openclaw/plugin-sdk/memory-core-host-runtime-core";
 
@@ -96,6 +97,7 @@ export function buildMemoryFlushPlan(
   params: {
     cfg?: OpenClawConfig;
     nowMs?: number;
+    userContext?: MemoryFlushUserContext;
   } = {},
 ): MemoryFlushPlan | null {
   const resolved = params;
@@ -117,15 +119,47 @@ export function buildMemoryFlushPlan(
 
   const { timeLine, userTimezone } = resolveCronStyleNow(cfg ?? {}, nowMs);
   const dateStamp = formatDateStampInTimezone(nowMs, userTimezone);
-  const relativePath = `memory/${dateStamp}.md`;
 
+  const { channel, userId } = resolved.userContext ?? {};
+  const isUsersMode = cfg?.memory?.userMode === "users" && Boolean(channel) && Boolean(userId);
+  const relativePath = isUsersMode
+    ? `memory/users/${channel}/${userId}/logs/${dateStamp}.md`
+    : `memory/${dateStamp}.md`;
+
+  // In users mode the flush writes to a per-user log; update prompt hints accordingly.
+  const targetHint = isUsersMode
+    ? `Store durable memories only in ${relativePath} (create parent directories if needed).`
+    : MEMORY_FLUSH_TARGET_HINT;
+  const appendOnlyHint = isUsersMode
+    ? `If ${relativePath} already exists, APPEND new content only and do not overwrite existing entries.`
+    : MEMORY_FLUSH_APPEND_ONLY_HINT;
+
+  const baseFlushPrompt = [
+    targetHint,
+    MEMORY_FLUSH_READ_ONLY_HINT,
+    appendOnlyHint,
+    "Do NOT create timestamped variant files (e.g., YYYY-MM-DD-HHMM.md); always use the canonical YYYY-MM-DD.md filename.",
+    `If nothing to store, reply with ${SILENT_REPLY_TOKEN}.`,
+  ].join(" ");
+
+  const baseFlushSystemPrompt = [
+    "Pre-compaction memory flush turn.",
+    "The session is near auto-compaction; capture durable memories to disk.",
+    targetHint,
+    MEMORY_FLUSH_READ_ONLY_HINT,
+    appendOnlyHint,
+    `You may reply, but usually ${SILENT_REPLY_TOKEN} is correct.`,
+  ].join(" ");
+
+  // Only inject safety hints for user-provided custom prompts; our built-in prompts
+  // already contain the correct (possibly per-user) target/append hints.
+  const customPrompt = defaults?.prompt?.trim();
+  const customSystemPrompt = defaults?.systemPrompt?.trim();
   const promptBase = ensureNoReplyHint(
-    ensureMemoryFlushSafetyHints(defaults?.prompt?.trim() || DEFAULT_MEMORY_FLUSH_PROMPT),
+    customPrompt ? ensureMemoryFlushSafetyHints(customPrompt) : baseFlushPrompt,
   );
   const systemPrompt = ensureNoReplyHint(
-    ensureMemoryFlushSafetyHints(
-      defaults?.systemPrompt?.trim() || DEFAULT_MEMORY_FLUSH_SYSTEM_PROMPT,
-    ),
+    customSystemPrompt ? ensureMemoryFlushSafetyHints(customSystemPrompt) : baseFlushSystemPrompt,
   );
 
   return {

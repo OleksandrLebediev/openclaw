@@ -53,6 +53,8 @@ export function buildEmbeddedSystemPrompt(params: {
   contextFiles?: EmbeddedContextFile[];
   memoryCitationsMode?: MemoryCitationsMode;
   promptContribution?: ProviderSystemPromptContribution;
+  /** Long-term profile content for the current user (from memory/users/<channel>/<userId>/profile.md). Forwarded to buildAgentSystemPrompt. */
+  userProfileContent?: string;
 }): string {
   return buildAgentSystemPrompt({
     workspaceDir: params.workspaceDir,
@@ -82,6 +84,7 @@ export function buildEmbeddedSystemPrompt(params: {
     contextFiles: params.contextFiles,
     memoryCitationsMode: params.memoryCitationsMode,
     promptContribution: params.promptContribution,
+    userProfileContent: params.userProfileContent,
   });
 }
 

@@ -23,6 +23,47 @@ All memory search settings live under `agents.defaults.memorySearch` in
 
 ---
 
+## Per-user memory mode
+
+| Key               | Type     | Default  | Description                                                           |
+| ----------------- | -------- | -------- | --------------------------------------------------------------------- |
+| `memory.userMode` | `string` | `"solo"` | `"solo"` = shared global memory, `"users"` = per-user isolated memory |
+
+When set to `"users"`, each incoming sender gets their own memory subtree under
+`memory/users/<channel>/<userId>/`:
+
+- **`profile.md`** -- injected into the system prompt as `## About this user`
+  at the start of every session. Create this manually or ask the agent to write
+  it. It is never overwritten by the flush.
+- **`logs/YYYY-MM-DD.md`** -- written by the automatic memory flush instead of
+  the shared `memory/YYYY-MM-DD.md`.
+
+All files under `memory/users/` are indexed automatically by `memory_search`.
+
+```bash
+# Enable per-user memory
+openclaw config set memory.userMode users
+
+# Return to global (default) memory
+openclaw config set memory.userMode solo
+```
+
+```json5
+// openclaw.json
+{
+  memory: {
+    userMode: "users",
+  },
+}
+```
+
+<Info>
+`"solo"` is the default. Switching to `"users"` does not affect existing global
+memory files -- `MEMORY.md`, `memory/*.md`, and `DREAMS.md` remain unchanged.
+</Info>
+
+---
+
 ## Provider selection
 
 | Key        | Type      | Default          | Description                                                                                 |

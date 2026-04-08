@@ -3,11 +3,15 @@ import type { SessionSendPolicyConfig } from "./types.base.js";
 export type MemoryBackend = "builtin" | "qmd";
 export type MemoryCitationsMode = "auto" | "on" | "off";
 export type MemoryQmdSearchMode = "query" | "search" | "vsearch";
+/** "solo" = global shared memory (default), "users" = per-user isolated memory */
+export type MemoryUserMode = "solo" | "users";
 
 export type MemoryConfig = {
   backend?: MemoryBackend;
   citations?: MemoryCitationsMode;
   qmd?: MemoryQmdConfig;
+  /** Controls whether memory is shared globally ("solo") or isolated per user ("users"). Defaults to "solo". */
+  userMode?: MemoryUserMode;
 };
 
 export type MemoryQmdConfig = {

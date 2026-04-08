@@ -25,7 +25,7 @@ import {
 import { readSessionMessages } from "../../gateway/session-utils.fs.js";
 import { logVerbose } from "../../globals.js";
 import { registerAgentRunContext } from "../../infra/agent-events.js";
-import { resolveMemoryFlushPlan } from "../../plugins/memory-state.js";
+import { resolveMemoryFlushPlan, type MemoryFlushUserContext } from "../../plugins/memory-state.js";
 import type { TemplateContext } from "../templating.js";
 import type { VerboseLevel } from "../thinking.js";
 import type { GetReplyOptions } from "../types.js";
@@ -453,6 +453,17 @@ export async function runPreflightCompactionIfNeeded(params: {
   return entry ?? params.sessionEntry;
 }
 
+function resolveUserContextFromSessionCtx(
+  ctx: TemplateContext,
+): MemoryFlushUserContext | undefined {
+  const channel = (ctx.Surface ?? ctx.Provider)?.trim().toLowerCase();
+  const userId = ctx.SenderId?.trim() || undefined;
+  if (!channel || !userId) {
+    return undefined;
+  }
+  return { channel, userId };
+}
+
 export async function runMemoryFlushIfNeeded(params: {
   cfg: OpenClawConfig;
   followupRun: FollowupRun;
@@ -469,7 +480,8 @@ export async function runMemoryFlushIfNeeded(params: {
   isHeartbeat: boolean;
   replyOperation: ReplyOperation;
 }): Promise<SessionEntry | undefined> {
-  const memoryFlushPlan = resolveMemoryFlushPlan({ cfg: params.cfg });
+  const userContext = resolveUserContextFromSessionCtx(params.sessionCtx);
+  const memoryFlushPlan = resolveMemoryFlushPlan({ cfg: params.cfg, userContext });
   if (!memoryFlushPlan) {
     return params.sessionEntry;
   }
@@ -675,6 +687,7 @@ export async function runMemoryFlushIfNeeded(params: {
     resolveMemoryFlushPlan({
       cfg: params.cfg,
       nowMs: memoryFlushNowMs,
+      userContext,
     }) ?? memoryFlushPlan;
   const memoryFlushWritePath = activeMemoryFlushPlan.relativePath;
   const flushSystemPrompt = [

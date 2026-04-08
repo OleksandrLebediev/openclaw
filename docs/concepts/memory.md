@@ -73,6 +73,56 @@ multi-agent awareness. Plugin install.
 </Card>
 </CardGroup>
 
+## Per-user memory
+
+By default all conversations share the same workspace memory files. With
+`memory.userMode = "users"` each sender gets their own isolated memory tree:
+
+```
+memory/
+└── users/
+    └── telegram/
+        └── 349052843/
+            ├── profile.md          ← long-term facts about this user
+            └── logs/
+                └── 2026-04-08.md   ← daily flush log for this user
+```
+
+**How it works:**
+
+- The automatic memory flush writes to
+  `memory/users/<channel>/<userId>/logs/YYYY-MM-DD.md` instead of the shared
+  `memory/YYYY-MM-DD.md`.
+- If `profile.md` exists for the current user, its content is injected into the
+  agent system prompt at the start of every session under an
+  `## About this user` heading. The agent learns facts about this person without
+  mixing them into the global memory.
+- `profile.md` is not written automatically. Create it manually or ask the
+  agent to write it with the `write` tool. The daily logs are written
+  automatically by the flush mechanism.
+- All files under `memory/users/` are indexed by `memory_search` automatically
+  -- no extra configuration needed.
+
+**Enable per-user memory:**
+
+```bash
+openclaw config set memory.userMode users
+```
+
+**Switch back to global (default) memory:**
+
+```bash
+openclaw config set memory.userMode solo
+```
+
+<Info>
+`memory.userMode = "solo"` is the default. Existing workspaces are not
+affected when you enable `"users"` mode -- global files like `MEMORY.md` stay
+intact.
+</Info>
+
+For the full config reference see [memory.userMode](/reference/memory-config#per-user-memory-mode).
+
 ## Automatic memory flush
 
 Before [compaction](/concepts/compaction) summarizes your conversation, OpenClaw
@@ -121,5 +171,5 @@ openclaw memory index --force   # Rebuild the index
   tuning
 - [Dreaming (experimental)](/concepts/dreaming) -- background promotion
   from short-term recall to long-term memory
-- [Memory configuration reference](/reference/memory-config) -- all config knobs
+- [Memory configuration reference](/reference/memory-config) -- all config knobs, including `memory.userMode`
 - [Compaction](/concepts/compaction) -- how compaction interacts with memory

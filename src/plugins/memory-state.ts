@@ -73,9 +73,17 @@ export type MemoryFlushPlan = {
   relativePath: string;
 };
 
+export type MemoryFlushUserContext = {
+  /** Channel identifier, e.g. "telegram" */
+  channel?: string;
+  /** Stable sender id, e.g. "349052843" */
+  userId?: string;
+};
+
 export type MemoryFlushPlanResolver = (params: {
   cfg?: OpenClawConfig;
   nowMs?: number;
+  userContext?: MemoryFlushUserContext;
 }) => MemoryFlushPlan | null;
 
 export type RegisteredMemorySearchManager = MemorySearchManager;
@@ -179,6 +187,7 @@ export function registerMemoryFlushPlanResolver(resolver: MemoryFlushPlanResolve
 export function resolveMemoryFlushPlan(params: {
   cfg?: OpenClawConfig;
   nowMs?: number;
+  userContext?: MemoryFlushUserContext;
 }): MemoryFlushPlan | null {
   return memoryPluginState.flushPlanResolver?.(params) ?? null;
 }

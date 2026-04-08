@@ -177,4 +177,98 @@ describe("buildMemoryFlushPlan", () => {
     expect(DEFAULT_MEMORY_FLUSH_PROMPT).toContain("timestamped variant");
     expect(DEFAULT_MEMORY_FLUSH_PROMPT).toContain("YYYY-MM-DD.md");
   });
+
+  describe("users mode (memory.userMode = 'users')", () => {
+    const usersCfg = {
+      memory: { userMode: "users" as const },
+      agents: { defaults: { userTimezone: "UTC" } },
+    } as OpenClawConfig;
+
+    it("writes to per-user log path when userContext is present", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: usersCfg,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { channel: "telegram", userId: "349052843" },
+      });
+      expect(plan?.relativePath).toBe("memory/users/telegram/349052843/logs/2026-04-08.md");
+    });
+
+    it("prompt contains the per-user path", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: usersCfg,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { channel: "telegram", userId: "349052843" },
+      });
+      expect(plan?.prompt).toContain("memory/users/telegram/349052843/logs/2026-04-08.md");
+      expect(plan?.systemPrompt).toContain("memory/users/telegram/349052843/logs/2026-04-08.md");
+    });
+
+    it("prompt does NOT contain the generic memory/YYYY-MM-DD.md target hint", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: usersCfg,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { channel: "telegram", userId: "349052843" },
+      });
+      expect(plan?.prompt).not.toContain("memory/YYYY-MM-DD.md");
+      // The generic solo-mode path should not appear either
+      expect(plan?.prompt).not.toContain("memory/2026-04-08.md");
+    });
+
+    it("still includes read-only guard hint in users mode", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: usersCfg,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { channel: "telegram", userId: "349052843" },
+      });
+      expect(plan?.prompt).toContain("MEMORY.md");
+      expect(plan?.prompt).toContain("read-only");
+    });
+
+    it("falls back to solo path when userContext is absent", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: usersCfg,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+      });
+      expect(plan?.relativePath).toBe("memory/2026-04-08.md");
+    });
+
+    it("falls back to solo path when channel is missing from userContext", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: usersCfg,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { userId: "349052843" },
+      });
+      expect(plan?.relativePath).toBe("memory/2026-04-08.md");
+    });
+
+    it("falls back to solo path when userId is missing from userContext", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: usersCfg,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { channel: "telegram" },
+      });
+      expect(plan?.relativePath).toBe("memory/2026-04-08.md");
+    });
+
+    it("uses solo path when userMode is not set even if userContext is present", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: { agents: { defaults: { userTimezone: "UTC" } } } as OpenClawConfig,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { channel: "telegram", userId: "349052843" },
+      });
+      expect(plan?.relativePath).toBe("memory/2026-04-08.md");
+    });
+
+    it("uses solo path when userMode is 'solo' even if userContext is present", () => {
+      const plan = buildMemoryFlushPlan({
+        cfg: {
+          memory: { userMode: "solo" as const },
+          agents: { defaults: { userTimezone: "UTC" } },
+        } as OpenClawConfig,
+        nowMs: Date.UTC(2026, 3, 8, 12, 0, 0),
+        userContext: { channel: "telegram", userId: "349052843" },
+      });
+      expect(plan?.relativePath).toBe("memory/2026-04-08.md");
+    });
+  });
 });

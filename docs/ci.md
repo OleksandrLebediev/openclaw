@@ -1,10 +1,12 @@
 ---
-title: CI Pipeline
+
+## title: CI Pipeline
+
 summary: "CI job graph, scope gates, and local command equivalents"
 read_when:
-  - You need to understand why a CI job did or did not run
-  - You are debugging failing GitHub Actions checks
----
+
+- You need to understand why a CI job did or did not run
+- You are debugging failing GitHub Actions checks
 
 # CI Pipeline
 

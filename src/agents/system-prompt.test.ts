@@ -1060,3 +1060,58 @@ describe("buildSubagentSystemPrompt", () => {
     }
   });
 });
+
+describe("buildAgentSystemPrompt – userProfileContent", () => {
+  const base = { workspaceDir: "/tmp/openclaw" };
+
+  it("injects ## About this user section when userProfileContent is provided", () => {
+    const prompt = buildAgentSystemPrompt({
+      ...base,
+      userProfileContent: "Name: Alice\nLanguage: English",
+    });
+    expect(prompt).toContain("## About this user");
+    expect(prompt).toContain("Name: Alice");
+    expect(prompt).toContain("Language: English");
+  });
+
+  it("does not inject ## About this user when userProfileContent is absent", () => {
+    const prompt = buildAgentSystemPrompt({ ...base });
+    expect(prompt).not.toContain("## About this user");
+  });
+
+  it("does not inject ## About this user when userProfileContent is empty string", () => {
+    const prompt = buildAgentSystemPrompt({ ...base, userProfileContent: "" });
+    expect(prompt).not.toContain("## About this user");
+  });
+
+  it("does not inject ## About this user in minimal promptMode", () => {
+    const prompt = buildAgentSystemPrompt({
+      ...base,
+      userProfileContent: "Name: Bob",
+      promptMode: "minimal",
+    });
+    expect(prompt).not.toContain("## About this user");
+    expect(prompt).not.toContain("Name: Bob");
+  });
+
+  it("does not inject ## About this user in none promptMode", () => {
+    const prompt = buildAgentSystemPrompt({
+      ...base,
+      userProfileContent: "Name: Bob",
+      promptMode: "none",
+    });
+    expect(prompt).not.toContain("## About this user");
+  });
+
+  it("places ## About this user before the ## Workspace section", () => {
+    const prompt = buildAgentSystemPrompt({
+      ...base,
+      userProfileContent: "Name: Alice",
+    });
+    const aboutIdx = prompt.indexOf("## About this user");
+    const workspaceIdx = prompt.indexOf("## Workspace");
+    expect(aboutIdx).toBeGreaterThanOrEqual(0);
+    expect(workspaceIdx).toBeGreaterThanOrEqual(0);
+    expect(aboutIdx).toBeLessThan(workspaceIdx);
+  });
+});

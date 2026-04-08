@@ -101,6 +101,7 @@ import { buildSystemPromptParams } from "../../system-prompt-params.js";
 import { buildSystemPromptReport } from "../../system-prompt-report.js";
 import { sanitizeToolCallIdsForCloudCodeAssist } from "../../tool-call-id.js";
 import { resolveTranscriptPolicy } from "../../transcript-policy.js";
+import { readUserProfileContent } from "../../user-memory.js";
 import { DEFAULT_BOOTSTRAP_FILENAME } from "../../workspace.js";
 import { isRunnerAbortError } from "../abort.js";
 import { isCacheTtlEligibleProvider } from "../cache-ttl.js";
@@ -716,6 +717,15 @@ export async function runEmbeddedAttempt(
       },
     });
 
+    const userProfileContent =
+      params.config?.memory?.userMode === "users"
+        ? await readUserProfileContent({
+            workspaceDir: effectiveWorkspace,
+            channel: params.messageChannel ?? params.messageProvider,
+            userId: params.senderId,
+          })
+        : undefined;
+
     const appendPrompt = buildEmbeddedSystemPrompt({
       workspaceDir: effectiveWorkspace,
       defaultThinkLevel: params.thinkLevel,
@@ -744,6 +754,7 @@ export async function runEmbeddedAttempt(
       contextFiles,
       memoryCitationsMode: params.config?.memory?.citations,
       promptContribution,
+      userProfileContent,
     });
     const systemPromptReport = buildSystemPromptReport({
       source: "run",

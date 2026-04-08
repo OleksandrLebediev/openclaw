@@ -356,6 +356,8 @@ export function buildAgentSystemPrompt(params: {
   };
   memoryCitationsMode?: MemoryCitationsMode;
   promptContribution?: ProviderSystemPromptContribution;
+  /** Long-term profile content for the current user (from memory/users/<channel>/<userId>/profile.md). Injected as ## About this user when present and not in minimal mode. */
+  userProfileContent?: string;
 }) {
   const acpEnabled = params.acpEnabled !== false;
   const sandboxedRuntime = params.sandboxInfo?.enabled === true;
@@ -565,6 +567,9 @@ export function buildAgentSystemPrompt(params: {
     "",
     ...skillsSection,
     ...memorySection,
+    ...(params.userProfileContent && !isMinimal
+      ? ["## About this user", params.userProfileContent, ""]
+      : []),
     // Skip self-update for subagent/none modes
     hasGateway && !isMinimal ? "## OpenClaw Self-Update" : "",
     hasGateway && !isMinimal

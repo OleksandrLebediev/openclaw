@@ -17,6 +17,7 @@ Text is supported everywhere; media and reactions vary by channel.
 - [Discord](/channels/discord) — Discord Bot API + Gateway; supports servers, channels, and DMs.
 - [Feishu](/channels/feishu) — Feishu/Lark bot via WebSocket (bundled plugin).
 - [Google Chat](/channels/googlechat) — Google Chat API app via HTTP webhook.
+- [Instagram](/channels/instagram) — Instagram DMs via Meta Messaging API; requires a Business or Creator account (bundled plugin).
 - [iMessage (legacy)](/channels/imessage) — Legacy macOS integration via imsg CLI (deprecated, use BlueBubbles for new setups).
 - [IRC](/channels/irc) — Classic IRC servers; channels + DMs with pairing/allowlist controls.
 - [LINE](/channels/line) — LINE Messaging API bot (bundled plugin).

@@ -246,7 +246,7 @@ Suggested `.gitignore` starter:
 
 ## Persona mode
 
-`agents.defaults.personaMode` controls which operational instruction file is loaded at session start.
+`personaMode` controls which operational instruction file is loaded at session start.
 
 | Value               | File loaded | Use case                         |
 | ------------------- | ----------- | -------------------------------- |
@@ -255,13 +255,11 @@ Suggested `.gitignore` starter:
 
 When `personaMode` is `"human"`, `AGENTS.md` is excluded from the bootstrap context and `HUMAN.md` is loaded in its place. The two files are mutually exclusive — only one is active per session.
 
-Set it in your config:
+### Global default
 
 ```bash
 openclaw config set agents.defaults.personaMode human
 ```
-
-Or in `~/.openclaw/openclaw.json`:
 
 ```json5
 {
@@ -272,6 +270,32 @@ Or in `~/.openclaw/openclaw.json`:
   },
 }
 ```
+
+### Per-agent override
+
+`agents.list[].personaMode` overrides the global default for a specific agent, leaving all other agents unaffected:
+
+```json5
+{
+  agents: {
+    defaults: { personaMode: "agent" },
+    list: [
+      {
+        id: "lilu",
+        personaMode: "human",
+      },
+    ],
+  },
+}
+```
+
+### Memory isolation in human mode
+
+When `personaMode` is `"human"`, the agent automatically uses per-user isolated memory (`memory.userMode = "users"`) without any extra configuration. Each person the agent talks to gets their own subtree under `memory/users/<channel>/<userId>/`.
+
+To opt out explicitly, set `agents.list[].memory.userMode = "solo"` for that agent.
+
+See [Per-user memory mode](/reference/memory-config#per-user-memory-mode) for the full reference.
 
 ## Related
 

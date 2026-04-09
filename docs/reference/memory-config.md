@@ -41,7 +41,7 @@ When set to `"users"`, each incoming sender gets their own memory subtree under
 All files under `memory/users/` are indexed automatically by `memory_search`.
 
 ```bash
-# Enable per-user memory
+# Enable per-user memory globally
 openclaw config set memory.userMode users
 
 # Return to global (default) memory
@@ -58,6 +58,37 @@ openclaw config set memory.userMode solo
 ```
 
 `"solo"` is the default. Switching to `"users"` does not affect existing global memory files -- `MEMORY.md`, `memory/*.md`, and `DREAMS.md` remain unchanged.
+
+### Per-agent override
+
+`agents.list[].memory.userMode` overrides the global setting for a specific agent:
+
+```json5
+{
+  agents: {
+    list: [
+      {
+        id: "lilu",
+        memory: { userMode: "users" },
+      },
+    ],
+  },
+}
+```
+
+### Auto-enable in human persona mode
+
+When `agents.list[].personaMode` is `"human"` (or `agents.defaults.personaMode` is `"human"`),
+`userMode` automatically defaults to `"users"` for that agent without any extra config.
+This reflects the typical use case: a digital-human persona interacts with many different people
+and needs isolated per-user memory.
+
+Resolution order (highest to lowest priority):
+
+1. `agents.list[<id>].memory.userMode` — explicit per-agent override
+2. `"users"` — auto-applied when the effective `personaMode` is `"human"`
+3. `memory.userMode` — global setting
+4. `"solo"` — built-in default
 
 ---
 

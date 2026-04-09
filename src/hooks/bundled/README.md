@@ -220,4 +220,4 @@ Test your hooks by:
 
 ## Documentation
 
-Full documentation: https://docs.openclaw.ai/automation/hooks
+Full documentation: [https://docs.openclaw.ai/automation/hooks](https://docs.openclaw.ai/automation/hooks)

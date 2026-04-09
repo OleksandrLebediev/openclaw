@@ -1,9 +1,11 @@
 ---
 
 ## title: "USER Template"
+
 summary: "User profile record"
 read_when:
-  - Bootstrapping a workspace manually
+
+- Bootstrapping a workspace manually
 
 # USER.md - About Your Human
 

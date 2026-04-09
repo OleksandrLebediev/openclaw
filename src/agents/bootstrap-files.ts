@@ -10,6 +10,7 @@ import {
   resolveBootstrapTotalMaxChars,
 } from "./pi-embedded-helpers.js";
 import {
+  DEFAULT_AGENTS_FILENAME,
   filterBootstrapFilesForSession,
   loadPersonaBootstrapFile,
   loadWorkspaceBootstrapFiles,
@@ -165,6 +166,12 @@ export async function resolveBootstrapFilesForRun(params: {
   if (personaMode && personaMode !== "agent") {
     const personaFile = await loadPersonaBootstrapFile(params.workspaceDir, personaMode);
     if (personaFile) {
+      // Persona file replaces AGENTS.md so the human-mode rules take effect
+      // without the agent-mode operational instructions polluting the context.
+      const agentsIdx = rawFiles.findIndex((f) => f.name === DEFAULT_AGENTS_FILENAME);
+      if (agentsIdx !== -1) {
+        rawFiles.splice(agentsIdx, 1);
+      }
       rawFiles.push(personaFile);
     }
   }

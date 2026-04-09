@@ -97,6 +97,11 @@ export type AgentConfig = {
   tools?: AgentToolsConfig;
   /** Optional runtime descriptor for this agent. */
   runtime?: AgentRuntimeConfig;
+  /**
+   * Per-agent persona overlay mode. Overrides agents.defaults.personaMode for this agent.
+   * "human" loads HUMAN.md instead of AGENTS.md; "agent" forces standard behavior.
+   */
+  personaMode?: "agent" | "human";
 };
 
 export type AgentsConfig = {

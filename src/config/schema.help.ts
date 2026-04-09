@@ -218,6 +218,8 @@ export const FIELD_HELP: Record<string, string> = {
     "Optional ACP session mode default for this agent (persistent or oneshot).",
   "agents.list[].runtime.acp.cwd":
     "Optional default working directory for this agent's ACP sessions.",
+  "agents.list[].personaMode":
+    'Per-agent persona overlay mode. Overrides agents.defaults.personaMode for this agent. "human" loads HUMAN.md instead of AGENTS.md; "agent" forces standard agent behavior regardless of the global default.',
   "agents.list[].identity.avatar":
     "Avatar image path (relative to the agent workspace only) or a remote URL/data URL.",
   "agents.defaults.heartbeat.suppressToolErrorWarnings":

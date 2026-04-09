@@ -774,7 +774,9 @@ export const agentsHandlers: GatewayRequestHandlers = {
     } catch {
       // Fall back to showing BOOTSTRAP if workspace state cannot be read.
     }
-    const personaMode = cfg.agents?.defaults?.personaMode;
+    // Per-agent entry takes precedence over global defaults.
+    const agentEntry = cfg.agents?.list?.find((e) => e.id === agentId);
+    const personaMode = agentEntry?.personaMode ?? cfg.agents?.defaults?.personaMode;
     const files = await listAgentFiles(workspaceDir, { hideBootstrap, personaMode });
     respond(true, { agentId, workspace: workspaceDir, files }, undefined);
   },

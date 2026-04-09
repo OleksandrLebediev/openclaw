@@ -144,6 +144,20 @@ function applyContextModeFilter(params: {
   return [];
 }
 
+function resolvePersonaMode(
+  config: OpenClawConfig | undefined,
+  agentId: string | undefined,
+): string | undefined {
+  // Per-agent entry takes precedence; fall back to global defaults.
+  if (agentId) {
+    const entry = config?.agents?.list?.find((e) => e.id === agentId);
+    if (entry?.personaMode !== undefined) {
+      return entry.personaMode;
+    }
+  }
+  return config?.agents?.defaults?.personaMode;
+}
+
 export async function resolveBootstrapFilesForRun(params: {
   workspaceDir: string;
   config?: OpenClawConfig;
@@ -165,7 +179,8 @@ export async function resolveBootstrapFilesForRun(params: {
   // HUMAN.md and AGENTS.md are mutually exclusive: personaMode selects which one
   // is active. Human mode uses HUMAN.md (excludes AGENTS.md); agent mode (default)
   // uses AGENTS.md (excludes HUMAN.md).
-  const personaMode = params.config?.agents?.defaults?.personaMode;
+  // Per-agent entry takes precedence over agents.defaults.
+  const personaMode = resolvePersonaMode(params.config, params.agentId);
   if (personaMode === "human") {
     const idx = rawFiles.findIndex((f) => f.name === DEFAULT_AGENTS_FILENAME);
     if (idx !== -1) {

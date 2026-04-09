@@ -125,6 +125,62 @@ describe("resolveBootstrapFilesForRun — personaMode", () => {
     expect(files.some((f) => f.name === DEFAULT_AGENTS_FILENAME)).toBe(true);
     expect(files.some((f) => f.name === DEFAULT_HUMAN_FILENAME)).toBe(false);
   });
+
+  it("per-agent personaMode overrides global default: agent entry human > defaults agent", async () => {
+    const workspaceDir = await makeTempWorkspace("openclaw-persona-per-agent-");
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_AGENTS_FILENAME,
+      content: "agent rules",
+    });
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_HUMAN_FILENAME,
+      content: "human rules",
+    });
+
+    const files = await resolveBootstrapFilesForRun({
+      workspaceDir,
+      agentId: "lilu",
+      config: {
+        agents: {
+          defaults: { personaMode: "agent" },
+          list: [{ id: "lilu", personaMode: "human" }],
+        },
+      } as never,
+    });
+
+    expect(files.some((f) => f.name === DEFAULT_HUMAN_FILENAME)).toBe(true);
+    expect(files.some((f) => f.name === DEFAULT_AGENTS_FILENAME)).toBe(false);
+  });
+
+  it("per-agent personaMode overrides global default: agent entry agent > defaults human", async () => {
+    const workspaceDir = await makeTempWorkspace("openclaw-persona-per-agent-");
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_AGENTS_FILENAME,
+      content: "agent rules",
+    });
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_HUMAN_FILENAME,
+      content: "human rules",
+    });
+
+    const files = await resolveBootstrapFilesForRun({
+      workspaceDir,
+      agentId: "normal",
+      config: {
+        agents: {
+          defaults: { personaMode: "human" },
+          list: [{ id: "normal", personaMode: "agent" }],
+        },
+      } as never,
+    });
+
+    expect(files.some((f) => f.name === DEFAULT_AGENTS_FILENAME)).toBe(true);
+    expect(files.some((f) => f.name === DEFAULT_HUMAN_FILENAME)).toBe(false);
+  });
 });
 
 describe("resolveBootstrapFilesForRun", () => {

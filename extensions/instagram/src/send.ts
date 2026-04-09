@@ -5,6 +5,8 @@ export interface SendInstagramMessageOptions {
   accessToken: string;
   recipientId: string;
   text: string;
+  /** Instagram Business Account ID (IGSID). Defaults to "me" if not provided. */
+  igAccountId?: string;
 }
 
 export interface SendInstagramMessageResult {
@@ -25,7 +27,7 @@ interface GraphApiResponse {
 export async function sendInstagramMessage(
   options: SendInstagramMessageOptions,
 ): Promise<SendInstagramMessageResult> {
-  const { accessToken, recipientId, text } = options;
+  const { accessToken, recipientId, text, igAccountId } = options;
 
   const body = {
     recipient: { id: recipientId },
@@ -33,8 +35,10 @@ export async function sendInstagramMessage(
     messaging_type: "RESPONSE",
   };
 
+  // Instagram Messaging API requires /{ig-user-id}/messages, not /me/messages
+  const senderId = igAccountId ?? "me";
   const response = await fetch(
-    `${GRAPH_API_BASE}/me/messages?access_token=${encodeURIComponent(accessToken)}`,
+    `${GRAPH_API_BASE}/${senderId}/messages?access_token=${encodeURIComponent(accessToken)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

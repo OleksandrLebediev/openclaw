@@ -76,6 +76,7 @@ export function resolveOpenAISystemPromptContribution(params: {
   mode: OpenAIPromptOverlayMode;
   modelProviderId?: string;
   modelId?: string;
+  personaMode?: "agent" | "human";
 }) {
   if (
     !shouldApplyOpenAIPromptOverlay({
@@ -85,11 +86,15 @@ export function resolveOpenAISystemPromptContribution(params: {
   ) {
     return undefined;
   }
+  // In human persona mode, skip the "friendly" overlay entirely — it contains
+  // "Do not claim a body, real-world sensations, or personal life events you did not have."
+  // which directly contradicts the digital-human persona defined in HUMAN.md.
+  const applyFriendly = params.mode === "friendly" && params.personaMode !== "human";
   return {
     stablePrefix: OPENAI_GPT5_OUTPUT_CONTRACT,
     sectionOverrides: {
       execution_bias: OPENAI_GPT5_EXECUTION_BIAS,
-      ...(params.mode === "friendly" ? { interaction_style: OPENAI_FRIENDLY_PROMPT_OVERLAY } : {}),
+      ...(applyFriendly ? { interaction_style: OPENAI_FRIENDLY_PROMPT_OVERLAY } : {}),
     },
   };
 }

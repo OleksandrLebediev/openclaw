@@ -55,6 +55,8 @@ export function buildEmbeddedSystemPrompt(params: {
   promptContribution?: ProviderSystemPromptContribution;
   /** Long-term profile content for the current user (from memory/users/<channel>/<userId>/profile.md). Forwarded to buildAgentSystemPrompt. */
   userProfileContent?: string;
+  /** When "human", the core identity opener is replaced with a neutral line so SOUL.md/HUMAN.md can define the persona without contradiction. */
+  personaMode?: "agent" | "human";
 }): string {
   return buildAgentSystemPrompt({
     workspaceDir: params.workspaceDir,
@@ -85,6 +87,7 @@ export function buildEmbeddedSystemPrompt(params: {
     memoryCitationsMode: params.memoryCitationsMode,
     promptContribution: params.promptContribution,
     userProfileContent: params.userProfileContent,
+    personaMode: params.personaMode,
   });
 }
 

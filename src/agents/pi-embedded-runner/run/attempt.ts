@@ -701,6 +701,13 @@ export async function runEmbeddedAttempt(
     })
       ? resolveHeartbeatPrompt(params.config?.agents?.defaults?.heartbeat?.prompt)
       : undefined;
+    const resolvedPersonaMode: "agent" | "human" | undefined = (() => {
+      const entry = params.config?.agents?.list?.find((e) => e.id === sessionAgentId);
+      if (entry?.personaMode !== undefined) {
+        return entry.personaMode;
+      }
+      return params.config?.agents?.defaults?.personaMode;
+    })();
     const promptContribution = resolveProviderSystemPromptContribution({
       provider: params.provider,
       config: params.config,
@@ -715,6 +722,7 @@ export async function runEmbeddedAttempt(
         runtimeChannel,
         runtimeCapabilities,
         agentId: sessionAgentId,
+        personaMode: resolvedPersonaMode,
       },
     });
 
@@ -766,6 +774,7 @@ export async function runEmbeddedAttempt(
       memoryCitationsMode: params.config?.memory?.citations,
       promptContribution,
       userProfileContent,
+      personaMode: resolvedPersonaMode,
     });
     const systemPromptReport = buildSystemPromptReport({
       source: "run",

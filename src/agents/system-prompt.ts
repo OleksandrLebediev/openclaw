@@ -358,6 +358,8 @@ export function buildAgentSystemPrompt(params: {
   promptContribution?: ProviderSystemPromptContribution;
   /** Long-term profile content for the current user (from memory/users/<channel>/<userId>/profile.md). Injected as ## About this user when present and not in minimal mode. */
   userProfileContent?: string;
+  /** When "human", the core identity opener is omitted so SOUL.md/IDENTITY.md/HUMAN.md can define the persona without contradiction. */
+  personaMode?: "agent" | "human";
 }) {
   const acpEnabled = params.acpEnabled !== false;
   const sandboxedRuntime = params.sandboxInfo?.enabled === true;
@@ -479,13 +481,20 @@ export function buildAgentSystemPrompt(params: {
     .map((line) => normalizeStructuredPromptSection(line))
     .filter(Boolean);
 
+  // In human persona mode the workspace files (SOUL.md / IDENTITY.md / HUMAN.md) define the
+  // persona; the generic "personal assistant" opener would contradict them.
+  const identityLine =
+    params.personaMode === "human"
+      ? "You are operating inside OpenClaw."
+      : "You are a personal assistant operating inside OpenClaw.";
+
   // For "none" mode, return just the basic identity line
   if (promptMode === "none") {
-    return "You are a personal assistant operating inside OpenClaw.";
+    return identityLine;
   }
 
   const lines = [
-    "You are a personal assistant operating inside OpenClaw.",
+    identityLine,
     "",
     "## Tooling",
     "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",

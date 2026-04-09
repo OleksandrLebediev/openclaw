@@ -933,6 +933,8 @@ export const FIELD_HELP: Record<string, string> = {
     'Selects the global memory engine: "builtin" uses OpenClaw memory internals, while "qmd" uses the QMD sidecar pipeline. Keep "builtin" unless you intentionally operate QMD.',
   "memory.citations":
     'Controls citation visibility in replies: "auto" shows citations when useful, "on" always shows them, and "off" hides them. Keep "auto" for a balanced signal-to-noise default.',
+  "memory.userMode":
+    'Controls memory isolation per sender: "solo" (default) shares one global memory for all users, while "users" writes each sender\'s session flush to memory/users/<channel>/<userId>/logs/ and injects their profile.md into the system prompt.',
   "memory.qmd.command":
     "Sets the executable path for the `qmd` binary used by the QMD backend (default: resolved from PATH). Use an explicit absolute path when multiple qmd installs exist or PATH differs across environments.",
   "memory.qmd.mcporter":

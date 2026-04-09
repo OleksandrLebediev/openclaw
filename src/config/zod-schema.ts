@@ -117,6 +117,7 @@ const MemorySchema = z
     backend: z.union([z.literal("builtin"), z.literal("qmd")]).optional(),
     citations: z.union([z.literal("auto"), z.literal("on"), z.literal("off")]).optional(),
     qmd: MemoryQmdSchema.optional(),
+    userMode: z.union([z.literal("solo"), z.literal("users")]).optional(),
   })
   .strict()
   .optional();

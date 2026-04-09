@@ -303,7 +303,10 @@ async function statFileSafely(filePath: string): Promise<FileMeta | null> {
   }
 }
 
-async function listAgentFiles(workspaceDir: string, options?: { hideBootstrap?: boolean }) {
+async function listAgentFiles(
+  workspaceDir: string,
+  options?: { hideBootstrap?: boolean; personaMode?: string },
+) {
   const files: Array<{
     name: string;
     path: string;
@@ -312,9 +315,14 @@ async function listAgentFiles(workspaceDir: string, options?: { hideBootstrap?: 
     updatedAtMs?: number;
   }> = [];
 
-  const bootstrapFileNames = options?.hideBootstrap
+  const baseNames = options?.hideBootstrap
     ? BOOTSTRAP_FILE_NAMES_POST_ONBOARDING
     : BOOTSTRAP_FILE_NAMES;
+  // In human mode hide AGENTS.md; in agent/default mode hide HUMAN.md.
+  const bootstrapFileNames =
+    options?.personaMode === "human"
+      ? baseNames.filter((n) => n !== DEFAULT_AGENTS_FILENAME)
+      : baseNames.filter((n) => n !== DEFAULT_HUMAN_FILENAME);
   for (const name of bootstrapFileNames) {
     const resolved = await resolveAgentWorkspaceFilePath({
       workspaceDir,
@@ -766,7 +774,8 @@ export const agentsHandlers: GatewayRequestHandlers = {
     } catch {
       // Fall back to showing BOOTSTRAP if workspace state cannot be read.
     }
-    const files = await listAgentFiles(workspaceDir, { hideBootstrap });
+    const personaMode = cfg.agents?.defaults?.personaMode;
+    const files = await listAgentFiles(workspaceDir, { hideBootstrap, personaMode });
     respond(true, { agentId, workspace: workspaceDir, files }, undefined);
   },
   "agents.files.get": async ({ params, respond }) => {

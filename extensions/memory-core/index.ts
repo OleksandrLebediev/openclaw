@@ -38,6 +38,8 @@ export default definePluginEntry({
         createMemorySearchTool({
           config: ctx.config,
           agentSessionKey: ctx.sessionKey,
+          messageChannel: ctx.messageChannel,
+          senderId: ctx.requesterSenderId,
         }),
       { names: ["memory_search"] },
     );

@@ -1,10 +1,12 @@
 ---
-title: "USER.dev Template"
+
+## title: "USER.dev Template"
+
 summary: "Dev agent user profile (C-3PO)"
 read_when:
-  - Using the dev gateway templates
-  - Updating the default dev agent identity
----
+
+- Using the dev gateway templates
+- Updating the default dev agent identity
 
 # USER.md - User Profile
 

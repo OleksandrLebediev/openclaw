@@ -1,12 +1,12 @@
 ---
-title: "Memory configuration reference"
+
+## title: "Memory configuration reference"
 summary: "All configuration knobs for memory search, embedding providers, QMD, hybrid search, and multimodal indexing"
 read_when:
   - You want to configure memory search providers or embedding models
   - You want to set up the QMD backend
   - You want to tune hybrid search, MMR, or temporal decay
   - You want to enable multimodal memory indexing
----
 
 # Memory configuration reference
 
@@ -32,10 +32,10 @@ All memory search settings live under `agents.defaults.memorySearch` in
 When set to `"users"`, each incoming sender gets their own memory subtree under
 `memory/users/<channel>/<userId>/`:
 
-- **`profile.md`** -- injected into the system prompt as `## About this user`
+- `**profile.md**` -- injected into the system prompt as `## About this user`
   at the start of every session. Create this manually or ask the agent to write
   it. It is never overwritten by the flush.
-- **`logs/YYYY-MM-DD.md`** -- written by the automatic memory flush instead of
+- `**logs/YYYY-MM-DD.md**` -- written by the automatic memory flush instead of
   the shared `memory/YYYY-MM-DD.md`.
 
 All files under `memory/users/` are indexed automatically by `memory_search`.
@@ -57,10 +57,7 @@ openclaw config set memory.userMode solo
 }
 ```
 
-<Info>
-`"solo"` is the default. Switching to `"users"` does not affect existing global
-memory files -- `MEMORY.md`, `memory/*.md`, and `DREAMS.md` remain unchanged.
-</Info>
+`"solo"` is the default. Switching to `"users"` does not affect existing global memory files -- `MEMORY.md`, `memory/*.md`, and `DREAMS.md` remain unchanged.
 
 ---
 
@@ -141,9 +138,7 @@ For custom OpenAI-compatible endpoints or overriding provider defaults:
 | `model`                | `string` | `gemini-embedding-001` | Also supports `gemini-embedding-2-preview` |
 | `outputDimensionality` | `number` | `3072`                 | For Embedding 2: 768, 1536, or 3072        |
 
-<Warning>
 Changing model or `outputDimensionality` triggers an automatic full reindex.
-</Warning>
 
 ---
 
@@ -452,7 +447,7 @@ runtime environment.
 ### Scope
 
 Controls which sessions can receive QMD search results. Same schema as
-[`session.sendPolicy`](/gateway/configuration-reference#session):
+`[session.sendPolicy](/gateway/configuration-reference#session)`:
 
 ```json5
 {

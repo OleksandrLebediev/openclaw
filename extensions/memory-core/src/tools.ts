@@ -140,9 +140,31 @@ async function executeMemoryReadResult<T>(params: {
   }
 }
 
+/**
+ * In users mode, keep results that belong to this user or are global (not under memory/users/).
+ * Other users' subtrees are filtered out to prevent cross-user data leakage.
+ */
+export function filterSearchResultsByUser(
+  results: MemorySearchResult[],
+  channel: string,
+  userId: string,
+): MemorySearchResult[] {
+  const userPrefix = `memory/users/${channel}/${userId}/`;
+  const globalUsersPrefix = "memory/users/";
+  return results.filter((r) => {
+    const p = r.path.replace(/\\/g, "/");
+    if (!p.startsWith(globalUsersPrefix)) {
+      return true;
+    }
+    return p.startsWith(userPrefix);
+  });
+}
+
 export function createMemorySearchTool(options: {
   config?: OpenClawConfig;
   agentSessionKey?: string;
+  messageChannel?: string;
+  senderId?: string;
 }): AnyAgentTool | null {
   return createMemoryTool({
     options,
@@ -194,7 +216,12 @@ export function createMemorySearchTool(options: {
               status.backend === "qmd"
                 ? clampResultsByInjectedChars(decorated, resolved.qmd?.limits.maxInjectedChars)
                 : decorated;
-            surfacedMemoryResults = memoryResults.map((result) => ({
+            const isUsersMode =
+              cfg?.memory?.userMode === "users" && options.messageChannel && options.senderId;
+            const filteredMemoryResults = isUsersMode
+              ? filterSearchResultsByUser(memoryResults, options.messageChannel!, options.senderId!)
+              : memoryResults;
+            surfacedMemoryResults = filteredMemoryResults.map((result) => ({
               ...result,
               corpus: "memory" as const,
             }));
@@ -206,7 +233,7 @@ export function createMemorySearchTool(options: {
               workspaceDir: status.workspaceDir,
               query,
               rawResults,
-              surfacedResults: memoryResults,
+              surfacedResults: filteredMemoryResults,
               timezone: sleepTimezone,
             });
             provider = status.provider;

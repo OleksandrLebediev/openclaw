@@ -7,6 +7,7 @@ import {
   DEFAULT_MEMORY_FLUSH_PROMPT,
   DEFAULT_MEMORY_FLUSH_SOFT_TOKENS,
 } from "./index.js";
+import { filterSearchResultsByUser } from "./src/tools.js";
 
 describe("buildPromptSection", () => {
   it("returns empty when no memory tools are available", () => {
@@ -270,5 +271,53 @@ describe("buildMemoryFlushPlan", () => {
       });
       expect(plan?.relativePath).toBe("memory/2026-04-08.md");
     });
+  });
+});
+
+describe("filterSearchResultsByUser", () => {
+  function makeResult(path: string) {
+    return { path, score: 1, snippet: "", source: "memory" as const, startLine: 1, endLine: 2 };
+  }
+
+  it("passes global memory files through (not under memory/users/)", () => {
+    const results = [
+      makeResult("MEMORY.md"),
+      makeResult("memory/2026-04-08.md"),
+      makeResult("DREAMS.md"),
+    ];
+    expect(filterSearchResultsByUser(results, "telegram", "123")).toEqual(results);
+  });
+
+  it("passes the current user's files through", () => {
+    const result = makeResult("memory/users/telegram/123/logs/2026-04-08.md");
+    expect(filterSearchResultsByUser([result], "telegram", "123")).toEqual([result]);
+  });
+
+  it("blocks another user's files", () => {
+    const result = makeResult("memory/users/telegram/999/logs/2026-04-08.md");
+    expect(filterSearchResultsByUser([result], "telegram", "123")).toEqual([]);
+  });
+
+  it("blocks a different channel's files", () => {
+    const result = makeResult("memory/users/discord/123/logs/2026-04-08.md");
+    expect(filterSearchResultsByUser([result], "telegram", "123")).toEqual([]);
+  });
+
+  it("handles mixed results: own files + global + foreign", () => {
+    const own = makeResult("memory/users/telegram/123/profile.md");
+    const global = makeResult("MEMORY.md");
+    const foreign = makeResult("memory/users/telegram/456/profile.md");
+    const results = [own, global, foreign];
+    expect(filterSearchResultsByUser(results, "telegram", "123")).toEqual([own, global]);
+  });
+
+  it("handles Windows-style backslash paths", () => {
+    const result = makeResult("memory\\users\\telegram\\999\\profile.md");
+    expect(filterSearchResultsByUser([result], "telegram", "123")).toEqual([]);
+  });
+
+  it("does not block files whose path starts with the user prefix exactly", () => {
+    const result = makeResult("memory/users/telegram/123/logs/2026-04-08.md");
+    expect(filterSearchResultsByUser([result], "telegram", "123")).toHaveLength(1);
   });
 });

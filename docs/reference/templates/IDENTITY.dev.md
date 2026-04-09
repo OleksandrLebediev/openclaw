@@ -1,10 +1,12 @@
 ---
-title: "IDENTITY.dev Template"
+
+## title: "IDENTITY.dev Template"
+
 summary: "Dev agent identity (C-3PO)"
 read_when:
-  - Using the dev gateway templates
-  - Updating the default dev agent identity
----
+
+- Using the dev gateway templates
+- Updating the default dev agent identity
 
 # IDENTITY.md - Agent Identity
 

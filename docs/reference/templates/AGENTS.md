@@ -1,9 +1,11 @@
 ---
-title: "AGENTS.md Template"
+
+## title: "AGENTS.md Template"
+
 summary: "Workspace template for AGENTS.md"
 read_when:
-  - Bootstrapping a workspace manually
----
+
+- Bootstrapping a workspace manually
 
 # AGENTS.md - Your Workspace
 
@@ -182,7 +184,7 @@ You are free to edit `HEARTBEAT.md` with a short checklist or reminders. Keep it
 **When to reach out:**
 
 - Important email arrived
-- Calendar event coming up (&lt;2h)
+- Calendar event coming up (<2h)
 - Something interesting you found
 - It's been >8h since you said anything
 
@@ -191,7 +193,7 @@ You are free to edit `HEARTBEAT.md` with a short checklist or reminders. Keep it
 - Late night (23:00-08:00) unless urgent
 - Human is clearly busy
 - Nothing new since last check
-- You just checked &lt;30 minutes ago
+- You just checked <30 minutes ago
 
 **Proactive work you can do without asking:**
 

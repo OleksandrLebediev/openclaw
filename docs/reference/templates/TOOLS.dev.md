@@ -1,10 +1,12 @@
 ---
-title: "TOOLS.dev Template"
+
+## title: "TOOLS.dev Template"
+
 summary: "Dev agent tools notes (C-3PO)"
 read_when:
-  - Using the dev gateway templates
-  - Updating the default dev agent identity
----
+
+- Using the dev gateway templates
+- Updating the default dev agent identity
 
 # TOOLS.md - User Tool Notes (editable)
 

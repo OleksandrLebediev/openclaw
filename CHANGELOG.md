@@ -18,6 +18,7 @@ Docs: https://docs.openclaw.ai
 - Gateway/sessions: add persisted compaction checkpoints plus Sessions UI branch/restore actions so operators can inspect and recover pre-compaction session state. (#62146) Thanks @scoootscooob.
 - Providers/Ollama: detect vision capability from the `/api/show` response and set image input on models that support it so Ollama vision models accept image attachments. (#62193) Thanks @BruceMacD.
 - Agents: add the `openclaw-claw-server-deploy` maintainer skill for pulling, building, and restarting OpenClaw on a remote `claw` SSH gateway host.
+- Agents/persona: add `agents.defaults.personaMode` config option (`"agent"` or `"human"`); when set to `"human"`, `HUMAN.md` is loaded instead of `AGENTS.md` so workspaces can deploy a digital-human persona with its own operational instructions.
 
 ### Fixes
 

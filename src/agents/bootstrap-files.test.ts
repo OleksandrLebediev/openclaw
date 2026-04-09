@@ -6,7 +6,7 @@ import {
   registerInternalHook,
   type AgentBootstrapHookContext,
 } from "../hooks/internal-hooks.js";
-import { makeTempWorkspace } from "../test-helpers/workspace.js";
+import { makeTempWorkspace, writeWorkspaceFile } from "../test-helpers/workspace.js";
 import {
   FULL_BOOTSTRAP_COMPLETED_CUSTOM_TYPE,
   hasCompletedBootstrapTurn,
@@ -14,7 +14,11 @@ import {
   resolveBootstrapFilesForRun,
   resolveContextInjectionMode,
 } from "./bootstrap-files.js";
-import type { WorkspaceBootstrapFile } from "./workspace.js";
+import {
+  DEFAULT_AGENTS_FILENAME,
+  DEFAULT_HUMAN_FILENAME,
+  type WorkspaceBootstrapFile,
+} from "./workspace.js";
 
 function registerExtraBootstrapFileHook() {
   registerInternalHook("agent:bootstrap", (event) => {
@@ -57,6 +61,71 @@ function registerMalformedBootstrapFileHook() {
     ];
   });
 }
+
+describe("resolveBootstrapFilesForRun — personaMode", () => {
+  it("human mode: excludes AGENTS.md and includes HUMAN.md when present", async () => {
+    const workspaceDir = await makeTempWorkspace("openclaw-persona-");
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_AGENTS_FILENAME,
+      content: "agent rules",
+    });
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_HUMAN_FILENAME,
+      content: "human rules",
+    });
+
+    const files = await resolveBootstrapFilesForRun({
+      workspaceDir,
+      config: { agents: { defaults: { personaMode: "human" } } } as never,
+    });
+
+    expect(files.some((f) => f.name === DEFAULT_HUMAN_FILENAME)).toBe(true);
+    expect(files.some((f) => f.name === DEFAULT_AGENTS_FILENAME)).toBe(false);
+  });
+
+  it("agent mode: excludes HUMAN.md and includes AGENTS.md when present", async () => {
+    const workspaceDir = await makeTempWorkspace("openclaw-persona-");
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_AGENTS_FILENAME,
+      content: "agent rules",
+    });
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_HUMAN_FILENAME,
+      content: "human rules",
+    });
+
+    const files = await resolveBootstrapFilesForRun({
+      workspaceDir,
+      config: { agents: { defaults: { personaMode: "agent" } } } as never,
+    });
+
+    expect(files.some((f) => f.name === DEFAULT_AGENTS_FILENAME)).toBe(true);
+    expect(files.some((f) => f.name === DEFAULT_HUMAN_FILENAME)).toBe(false);
+  });
+
+  it("no personaMode: excludes HUMAN.md by default", async () => {
+    const workspaceDir = await makeTempWorkspace("openclaw-persona-");
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_AGENTS_FILENAME,
+      content: "agent rules",
+    });
+    await writeWorkspaceFile({
+      dir: workspaceDir,
+      name: DEFAULT_HUMAN_FILENAME,
+      content: "human rules",
+    });
+
+    const files = await resolveBootstrapFilesForRun({ workspaceDir });
+
+    expect(files.some((f) => f.name === DEFAULT_AGENTS_FILENAME)).toBe(true);
+    expect(files.some((f) => f.name === DEFAULT_HUMAN_FILENAME)).toBe(false);
+  });
+});
 
 describe("resolveBootstrapFilesForRun", () => {
   beforeEach(() => clearInternalHooks());

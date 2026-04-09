@@ -67,8 +67,14 @@ These are the standard files OpenClaw expects inside the workspace:
 
 - `AGENTS.md`
   - Operating instructions for the agent and how it should use memory.
-  - Loaded at the start of every session.
+  - Loaded at the start of every session (when `personaMode` is `"agent"` or not set).
   - Good place for rules, priorities, and "how to behave" details.
+
+- `HUMAN.md`
+  - Operating instructions for a digital-human persona deployment.
+  - Loaded instead of `AGENTS.md` when `agents.defaults.personaMode` is set to `"human"`.
+  - Should contain the same operational guidance as `AGENTS.md`, adapted for a persona that does not present itself as an AI.
+  - See [`agents.defaults.personaMode`](#persona-mode) below.
 
 - `SOUL.md`
   - Persona, tone, and boundaries.
@@ -154,7 +160,7 @@ workspace is not already a repo, run:
 ```bash
 cd ~/.openclaw/workspace
 git init
-git add AGENTS.md SOUL.md TOOLS.md IDENTITY.md USER.md HEARTBEAT.md memory/
+git add AGENTS.md HUMAN.md SOUL.md TOOLS.md IDENTITY.md USER.md HEARTBEAT.md memory/
 git commit -m "Add agent workspace"
 ```
 
@@ -237,6 +243,35 @@ Suggested `.gitignore` starter:
   [Channel routing](/channels/channel-routing) for routing configuration.
 - If `agents.defaults.sandbox` is enabled, non-main sessions can use per-session sandbox
   workspaces under `agents.defaults.sandbox.workspaceRoot`.
+
+## Persona mode
+
+`agents.defaults.personaMode` controls which operational instruction file is loaded at session start.
+
+| Value               | File loaded | Use case                         |
+| ------------------- | ----------- | -------------------------------- |
+| `"agent"` (default) | `AGENTS.md` | Standard agent deployment        |
+| `"human"`           | `HUMAN.md`  | Digital-human persona deployment |
+
+When `personaMode` is `"human"`, `AGENTS.md` is excluded from the bootstrap context and `HUMAN.md` is loaded in its place. The two files are mutually exclusive — only one is active per session.
+
+Set it in your config:
+
+```bash
+openclaw config set agents.defaults.personaMode human
+```
+
+Or in `~/.openclaw/openclaw.json`:
+
+```json5
+{
+  agents: {
+    defaults: {
+      personaMode: "human",
+    },
+  },
+}
+```
 
 ## Related
 

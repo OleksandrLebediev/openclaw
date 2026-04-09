@@ -1078,6 +1078,8 @@ export type ProviderSystemPromptContributionContext = {
   runtimeChannel?: string;
   runtimeCapabilities?: string[];
   agentId?: string;
+  /** When "human", the agent runs as a digital persona — overlays that assert AI identity should be skipped. */
+  personaMode?: "agent" | "human";
 };
 
 /** Text-inference provider capability registered by a plugin. */

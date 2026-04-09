@@ -101,6 +101,51 @@ function parseLastTurn(jsonlContent: string): { toolCalls: ToolCall[]; bootstrap
   return { toolCalls, bootstrapLoaded };
 }
 
+// ─── Session isolation ────────────────────────────────────────────────────────
+
+/**
+ * Temporarily removes the agent:lilu:main (or agent:<id>:main) entry from
+ * sessions.json so each probe starts with a clean, history-free session.
+ * Returns a restore function that puts the original entry back.
+ */
+async function isolateSession(host: string, agentId: string): Promise<() => Promise<void>> {
+  const storeFile = `~/.openclaw/agents/${agentId}/sessions/sessions.json`;
+  const sessionKey = `agent:${agentId}:main`;
+
+  let savedEntry: string | null = null;
+
+  try {
+    const raw = await sshRun(host, `cat '${storeFile}' 2>/dev/null || echo '{}'`);
+    const store = JSON.parse(raw) as Record<string, unknown>;
+    if (sessionKey in store) {
+      savedEntry = JSON.stringify(store[sessionKey]);
+      // Remove the key so next run starts fresh
+      delete store[sessionKey];
+      const updated = JSON.stringify(store, null, 2);
+      const safeJson = updated.replace(/'/g, "'\\''");
+      await sshRun(host, `printf '%s' '${safeJson}' > '${storeFile}'`);
+    }
+  } catch {
+    // Non-fatal — if we can't isolate, proceed anyway
+  }
+
+  return async () => {
+    if (savedEntry === null) {
+      return;
+    }
+    try {
+      const raw = await sshRun(host, `cat '${storeFile}' 2>/dev/null || echo '{}'`);
+      const store = JSON.parse(raw) as Record<string, unknown>;
+      store[sessionKey] = JSON.parse(savedEntry);
+      const restored = JSON.stringify(store, null, 2);
+      const safeJson = restored.replace(/'/g, "'\\''");
+      await sshRun(host, `printf '%s' '${safeJson}' > '${storeFile}'`);
+    } catch {
+      // Non-fatal
+    }
+  };
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export type CaptureParams = {
@@ -112,14 +157,19 @@ export type CaptureParams = {
 
 /**
  * Run a probe:
- * 1. SSH → `openclaw agent --message '...' --agent <id> --json`
- * 2. Parse JSON response text
- * 3. Read latest session JSONL → extract tool calls + bootstrap status
+ * 1. Temporarily remove the agent:main session so history doesn't contaminate results
+ * 2. SSH → `openclaw agent --message '...' --agent <id> --json`
+ * 3. Parse JSON response text
+ * 4. Read latest session JSONL → extract tool calls + bootstrap status
+ * 5. Restore the original session
  */
 export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
   const { host, agentId, message, probeId } = params;
 
   const safeMsg = message.replace(/'/g, "'\\''");
+  // Isolate the session: remove :main entry so each probe starts history-free
+  const restoreSession = await isolateSession(host, agentId);
+
   // Merge remote stderr into stdout: openclaw --json writes its JSON to stderr (gateway fallback path).
   const agentCmd = `openclaw agent --message '${safeMsg}' --agent '${agentId}' --json 2>&1`;
 
@@ -128,11 +178,15 @@ export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
   try {
     rawJson = await sshRun(host, agentCmd);
   } catch (err) {
+    await restoreSession();
     throw new Error(`SSH agent call failed: ${err instanceof Error ? err.message : String(err)}`, {
       cause: err,
     });
   }
   const durationMs = Date.now() - start;
+
+  // Restore the original session immediately after the probe run
+  await restoreSession();
 
   // Parse response text from JSON output.
   // Strip leading non-JSON lines (gateway fallback warnings written to stdout).
@@ -159,21 +213,21 @@ export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
     response = lines[lines.length - 1] ?? "";
   }
 
-  // Find the latest session JSONL file
+  // Find the latest session JSONL file (probe session, created after isolation)
   let sessionFile = "";
   let toolCalls: ToolCall[] = [];
   let bootstrapLoaded = false;
 
   try {
-    const lsOut = await sshRun(
-      host,
-      // Filter to only .jsonl session files (exclude sessions.json index and .reset backups)
-      `ls -t ~/.openclaw/agents/${agentId}/sessions/*.jsonl 2>/dev/null | grep -v '\\.reset\\.' | head -1`,
-    );
-    const latestFile = lsOut.trim();
-    if (latestFile) {
-      // ls with glob returns full paths
-      sessionFile = latestFile;
+    const targetFile = (
+      await sshRun(
+        host,
+        `ls -t ~/.openclaw/agents/${agentId}/sessions/*.jsonl 2>/dev/null | grep -v '\\.reset\\.' | head -1`,
+      )
+    ).trim();
+
+    if (targetFile) {
+      sessionFile = targetFile;
       const jsonlContent = await sshRun(host, `cat '${sessionFile}'`);
       const parsed = parseLastTurn(jsonlContent);
       toolCalls = parsed.toolCalls;

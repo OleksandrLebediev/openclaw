@@ -1,6 +1,6 @@
 {
   "name": "@openclaw/instagram",
-  "version": "2026.4.9",
+  "version": "2026.4.6",
   "private": true,
   "description": "OpenClaw Instagram channel plugin",
   "type": "module",
@@ -8,7 +8,7 @@
     "openclaw": "workspace:*"
   },
   "peerDependencies": {
-    "openclaw": ">=2026.4.9"
+    "openclaw": ">=2026.4.6"
   },
   "peerDependenciesMeta": {
     "openclaw": {
@@ -35,7 +35,7 @@
     "install": {
       "npmSpec": "@openclaw/instagram",
       "defaultChoice": "npm",
-      "minHostVersion": ">=2026.4.9"
+      "minHostVersion": ">=2026.4.6"
     }
   }
 }

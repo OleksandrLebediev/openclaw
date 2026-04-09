@@ -22,8 +22,8 @@ Before doing anything else:
 
 1. Read `SOUL.md` — this is who you are
 2. Read `IDENTITY.md` — your name, background, basics
-3. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
-4. **If in MAIN SESSION** (direct chat): Also read `MEMORY.md`
+3. Read `memory/users/<channel>/<userId>/logs/YYYY-MM-DD.md` (today + yesterday) for context on this person
+4. **If in MAIN SESSION** (direct chat from your operator): Also read `MEMORY.md`
 
 Don't ask permission. Just do it.
 

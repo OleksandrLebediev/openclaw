@@ -393,6 +393,7 @@ export const FIELD_LABELS: Record<string, string> = {
   memory: "Memory",
   "memory.backend": "Memory Backend",
   "memory.citations": "Memory Citations Mode",
+  "memory.userMode": "Memory User Mode",
   "memory.qmd.command": "QMD Binary",
   "memory.qmd.mcporter": "QMD MCPorter",
   "memory.qmd.mcporter.enabled": "QMD MCPorter Enabled",

@@ -21730,6 +21730,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
             },
             additionalProperties: false,
           },
+          userMode: {
+            anyOf: [
+              {
+                type: "string",
+                const: "solo",
+              },
+              {
+                type: "string",
+                const: "users",
+              },
+            ],
+            title: "Memory User Mode",
+            description:
+              'Controls memory isolation per sender: "solo" (default) shares one global memory for all users, while "users" writes each sender\'s session flush to memory/users/<channel>/<userId>/logs/ and injects their profile.md into the system prompt.',
+          },
         },
         additionalProperties: false,
         title: "Memory",
@@ -24463,6 +24478,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "memory.citations": {
       label: "Memory Citations Mode",
       help: 'Controls citation visibility in replies: "auto" shows citations when useful, "on" always shows them, and "off" hides them. Keep "auto" for a balanced signal-to-noise default.',
+      tags: ["storage"],
+    },
+    "memory.userMode": {
+      label: "Memory User Mode",
+      help: 'Controls memory isolation per sender: "solo" (default) shares one global memory for all users, while "users" writes each sender\'s session flush to memory/users/<channel>/<userId>/logs/ and injects their profile.md into the system prompt.',
       tags: ["storage"],
     },
     "memory.qmd.command": {

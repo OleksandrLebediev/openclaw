@@ -11,8 +11,8 @@ import {
 } from "./pi-embedded-helpers.js";
 import {
   DEFAULT_AGENTS_FILENAME,
+  DEFAULT_HUMAN_FILENAME,
   filterBootstrapFilesForSession,
-  loadPersonaBootstrapFile,
   loadWorkspaceBootstrapFiles,
   type WorkspaceBootstrapFile,
 } from "./workspace.js";
@@ -162,17 +162,19 @@ export async function resolveBootstrapFilesForRun(params: {
       })
     : await loadWorkspaceBootstrapFiles(params.workspaceDir);
 
+  // HUMAN.md and AGENTS.md are mutually exclusive: personaMode selects which one
+  // is active. Human mode uses HUMAN.md (excludes AGENTS.md); agent mode (default)
+  // uses AGENTS.md (excludes HUMAN.md).
   const personaMode = params.config?.agents?.defaults?.personaMode;
-  if (personaMode && personaMode !== "agent") {
-    const personaFile = await loadPersonaBootstrapFile(params.workspaceDir, personaMode);
-    if (personaFile) {
-      // Persona file replaces AGENTS.md so the human-mode rules take effect
-      // without the agent-mode operational instructions polluting the context.
-      const agentsIdx = rawFiles.findIndex((f) => f.name === DEFAULT_AGENTS_FILENAME);
-      if (agentsIdx !== -1) {
-        rawFiles.splice(agentsIdx, 1);
-      }
-      rawFiles.push(personaFile);
+  if (personaMode === "human") {
+    const idx = rawFiles.findIndex((f) => f.name === DEFAULT_AGENTS_FILENAME);
+    if (idx !== -1) {
+      rawFiles.splice(idx, 1);
+    }
+  } else {
+    const idx = rawFiles.findIndex((f) => f.name === DEFAULT_HUMAN_FILENAME);
+    if (idx !== -1) {
+      rawFiles.splice(idx, 1);
     }
   }
 

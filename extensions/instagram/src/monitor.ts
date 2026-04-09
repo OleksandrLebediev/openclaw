@@ -154,8 +154,6 @@ async function processInstagramMessage(params: {
         await sendInstagramMessage({
           accessToken: account.accessToken,
           recipientId: msg.senderId,
-          // msg.recipientId is the Instagram Business Account ID (IGSID)
-          igAccountId: msg.recipientId,
           text,
         });
       },

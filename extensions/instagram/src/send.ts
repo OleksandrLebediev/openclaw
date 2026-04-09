@@ -27,7 +27,7 @@ interface GraphApiResponse {
 export async function sendInstagramMessage(
   options: SendInstagramMessageOptions,
 ): Promise<SendInstagramMessageResult> {
-  const { accessToken, recipientId, text, igAccountId } = options;
+  const { accessToken, recipientId, text } = options;
 
   const body = {
     recipient: { id: recipientId },
@@ -35,10 +35,10 @@ export async function sendInstagramMessage(
     messaging_type: "RESPONSE",
   };
 
-  // Instagram Messaging API requires /{ig-user-id}/messages, not /me/messages
-  const senderId = igAccountId ?? "me";
+  // Instagram Messaging API uses /me/messages with a Page Access Token
+  // obtained from a Meta App with Messenger > Instagram Messaging configured.
   const response = await fetch(
-    `${GRAPH_API_BASE}/${senderId}/messages?access_token=${encodeURIComponent(accessToken)}`,
+    `${GRAPH_API_BASE}/me/messages?access_token=${encodeURIComponent(accessToken)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

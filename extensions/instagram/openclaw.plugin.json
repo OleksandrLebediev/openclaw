@@ -1,0 +1,16 @@
+{
+  "id": "instagram",
+  "channels": ["instagram"],
+  "channelEnvVars": {
+    "instagram": [
+      "INSTAGRAM_ACCESS_TOKEN",
+      "INSTAGRAM_APP_SECRET",
+      "INSTAGRAM_WEBHOOK_VERIFY_TOKEN"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}

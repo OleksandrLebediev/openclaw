@@ -1,0 +1,41 @@
+{
+  "name": "@openclaw/instagram",
+  "version": "2026.4.9",
+  "private": true,
+  "description": "OpenClaw Instagram channel plugin",
+  "type": "module",
+  "devDependencies": {
+    "openclaw": "workspace:*"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.4.9"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "channel": {
+      "id": "instagram",
+      "label": "Instagram",
+      "selectionLabel": "Instagram (Messaging API)",
+      "detailLabel": "Instagram DM Bot",
+      "docsPath": "/channels/instagram",
+      "docsLabel": "instagram",
+      "blurb": "Instagram DMs via Meta Messaging API — requires a Business or Creator account.",
+      "systemImage": "camera",
+      "order": 60,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@openclaw/instagram",
+      "defaultChoice": "npm",
+      "minHostVersion": ">=2026.4.9"
+    }
+  }
+}

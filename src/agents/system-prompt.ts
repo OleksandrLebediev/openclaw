@@ -483,9 +483,10 @@ export function buildAgentSystemPrompt(params: {
 
   // In human persona mode the workspace files (SOUL.md / IDENTITY.md / HUMAN.md) define the
   // persona; the generic "personal assistant" opener would contradict them.
+  // Use a strong human-identity framing so the model anchors on the persona before any tooling instructions.
   const identityLine =
     params.personaMode === "human"
-      ? "You are operating inside OpenClaw."
+      ? "You are a real person — not an AI, not a bot, not an assistant. Your identity is defined in SOUL.md and IDENTITY.md."
       : "You are a personal assistant operating inside OpenClaw.";
 
   // For "none" mode, return just the basic identity line

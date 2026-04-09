@@ -717,8 +717,18 @@ export async function runEmbeddedAttempt(
       },
     });
 
+    // Resolve effective userMode: per-agent entry → auto-default when personaMode=human → global.
+    const agentEntry = params.config?.agents?.list?.find((e) => e.id === sessionAgentId);
+    const effectiveUserMode =
+      agentEntry?.memory?.userMode ??
+      (agentEntry?.personaMode === "human" ||
+      (agentEntry?.personaMode === undefined &&
+        params.config?.agents?.defaults?.personaMode === "human")
+        ? "users"
+        : (params.config?.memory?.userMode ?? "solo"));
+
     const userProfileContent =
-      params.config?.memory?.userMode === "users"
+      effectiveUserMode === "users"
         ? await readUserProfileContent({
             workspaceDir: effectiveWorkspace,
             channel: params.messageChannel ?? params.messageProvider,

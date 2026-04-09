@@ -813,6 +813,12 @@ export const AgentEntrySchema = z
     tools: AgentToolsSchema,
     runtime: AgentRuntimeSchema,
     personaMode: z.union([z.literal("agent"), z.literal("human")]).optional(),
+    memory: z
+      .object({
+        userMode: z.union([z.literal("solo"), z.literal("users")]).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

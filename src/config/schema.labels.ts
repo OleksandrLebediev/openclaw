@@ -771,6 +771,7 @@ export const FIELD_LABELS: Record<string, string> = {
   "channels.mattermost.requireMention": "Mattermost Require Mention",
   "agents.list[].skills": "Agent Skill Filter",
   "agents.list[].personaMode": "Persona Mode",
+  "agents.list[].memory.userMode": "Memory User Mode",
   "agents.list[].identity.avatar": "Agent Avatar",
   "agents.list[].heartbeat.suppressToolErrorWarnings":
     "Agent Heartbeat Suppress Tool Error Warnings",

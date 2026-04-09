@@ -2,6 +2,7 @@ import type { ChatType } from "../channels/chat-type.js";
 import type { AgentDefaultsConfig } from "./types.agent-defaults.js";
 import type { AgentModelConfig, AgentSandboxConfig } from "./types.agents-shared.js";
 import type { HumanDelayConfig, IdentityConfig } from "./types.base.js";
+import type { MemoryUserMode } from "./types.memory.js";
 import type { GroupChatConfig } from "./types.messages.js";
 import type { AgentToolsConfig, MemorySearchConfig } from "./types.tools.js";
 
@@ -102,6 +103,12 @@ export type AgentConfig = {
    * "human" loads HUMAN.md instead of AGENTS.md; "agent" forces standard behavior.
    */
   personaMode?: "agent" | "human";
+  /**
+   * Per-agent memory user mode. Overrides global memory.userMode.
+   * "users" isolates memory per user; "solo" uses global shared memory.
+   * Defaults to "users" automatically when personaMode is "human".
+   */
+  memory?: { userMode?: MemoryUserMode };
 };
 
 export type AgentsConfig = {

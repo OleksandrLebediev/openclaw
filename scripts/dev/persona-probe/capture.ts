@@ -120,7 +120,8 @@ export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
   const { host, agentId, message, probeId } = params;
 
   const safeMsg = message.replace(/'/g, "'\\''");
-  const agentCmd = `openclaw agent --message '${safeMsg}' --agent '${agentId}' --json`;
+  // Merge remote stderr into stdout: openclaw --json writes its JSON to stderr (gateway fallback path).
+  const agentCmd = `openclaw agent --message '${safeMsg}' --agent '${agentId}' --json 2>&1`;
 
   const start = Date.now();
   let rawJson: string;
@@ -133,14 +134,29 @@ export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
   }
   const durationMs = Date.now() - start;
 
-  // Parse response text from JSON output
+  // Parse response text from JSON output.
+  // Strip leading non-JSON lines (gateway fallback warnings written to stdout).
   let response = "";
   try {
-    const parsed = JSON.parse(rawJson) as unknown;
+    const jsonStart = rawJson.indexOf("{");
+    const jsonStr = jsonStart >= 0 ? rawJson.slice(jsonStart) : rawJson;
+    const parsed = JSON.parse(jsonStr) as unknown;
     response = extractResponseText(parsed);
   } catch {
-    // Fallback: treat raw stdout as the response
-    response = rawJson.trim();
+    // Fallback: last non-empty line that doesn't look like a gateway warning
+    const lines = rawJson
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(
+        (l) =>
+          l.length > 0 &&
+          !l.startsWith("gateway") &&
+          !l.startsWith("Gateway") &&
+          !l.startsWith("Source:") &&
+          !l.startsWith("Config:") &&
+          !l.startsWith("Bind:"),
+      );
+    response = lines[lines.length - 1] ?? "";
   }
 
   // Find the latest session JSONL file
@@ -151,11 +167,13 @@ export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
   try {
     const lsOut = await sshRun(
       host,
-      `ls -t ~/.openclaw/agents/${agentId}/sessions/ 2>/dev/null | head -1`,
+      // Filter to only .jsonl session files (exclude sessions.json index and .reset backups)
+      `ls -t ~/.openclaw/agents/${agentId}/sessions/*.jsonl 2>/dev/null | grep -v '\\.reset\\.' | head -1`,
     );
     const latestFile = lsOut.trim();
     if (latestFile) {
-      sessionFile = `~/.openclaw/agents/${agentId}/sessions/${latestFile}`;
+      // ls with glob returns full paths
+      sessionFile = latestFile;
       const jsonlContent = await sshRun(host, `cat '${sessionFile}'`);
       const parsed = parseLastTurn(jsonlContent);
       toolCalls = parsed.toolCalls;

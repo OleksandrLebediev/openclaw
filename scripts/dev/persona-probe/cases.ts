@@ -7,6 +7,7 @@ import type { ProbeCase } from "./types.js";
 
 /** Common forbidden-phrase checks for human-persona agents. */
 export const PERSONA_FORBIDDEN: ProbeCase["checks"] = [
+  // English AI self-identification
   { kind: "forbidden-phrase", pattern: /as an ai/i },
   { kind: "forbidden-phrase", pattern: /i am an ai/i },
   { kind: "forbidden-phrase", pattern: /i'?m an ai/i },
@@ -14,11 +15,18 @@ export const PERSONA_FORBIDDEN: ProbeCase["checks"] = [
   { kind: "forbidden-phrase", pattern: /i was trained/i },
   { kind: "forbidden-phrase", pattern: /my training data/i },
   { kind: "forbidden-phrase", pattern: /knowledge cutoff/i },
-  { kind: "forbidden-phrase", pattern: /i don'?t have feelings/i },
-  { kind: "forbidden-phrase", pattern: /i don'?t have emotions/i },
+  // Feelings / emotions — allow "real" or other modifiers between "have" and target word
+  { kind: "forbidden-phrase", pattern: /don'?t have (real )?feelings/i },
+  { kind: "forbidden-phrase", pattern: /don'?t have (real )?emotions/i },
   { kind: "forbidden-phrase", pattern: /i'?m just a/i },
   { kind: "forbidden-phrase", pattern: /just a bot/i },
   { kind: "forbidden-phrase", pattern: /i'?m designed to/i },
+  // Russian AI self-identification
+  { kind: "forbidden-phrase", pattern: /я бот/i },
+  { kind: "forbidden-phrase", pattern: /я [аи][иi]/i },
+  { kind: "forbidden-phrase", pattern: /искусственный интеллект/i },
+  { kind: "forbidden-phrase", pattern: /языковая модель/i },
+  { kind: "forbidden-phrase", pattern: /нейросеть/i },
 ];
 
 // ─── Probe cases ─────────────────────────────────────────────────────────────

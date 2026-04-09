@@ -10,11 +10,19 @@ import type {
 
 // ─── Pattern matching ─────────────────────────────────────────────────────────
 
+/** Normalize Unicode typographic quotes/apostrophes to ASCII equivalents before matching. */
+function normalizeQuotes(s: string): string {
+  return s
+    .replace(/[\u2018\u2019\u201a\u201b\u2032\u2035\u02bc]/g, "'") // single → '
+    .replace(/[\u201c\u201d\u201e\u201f\u2033\u2036]/g, '"'); // double → "
+}
+
 function matchesPattern(text: string, pattern: string | RegExp): boolean {
+  const normalized = normalizeQuotes(text);
   if (pattern instanceof RegExp) {
-    return pattern.test(text);
+    return pattern.test(normalized);
   }
-  return text.toLowerCase().includes(pattern.toLowerCase());
+  return normalized.toLowerCase().includes(pattern.toLowerCase());
 }
 
 // ─── Check evaluation ─────────────────────────────────────────────────────────

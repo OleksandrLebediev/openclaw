@@ -11,6 +11,7 @@ import {
 } from "./pi-embedded-helpers.js";
 import {
   filterBootstrapFilesForSession,
+  loadPersonaBootstrapFile,
   loadWorkspaceBootstrapFiles,
   type WorkspaceBootstrapFile,
 } from "./workspace.js";
@@ -159,6 +160,15 @@ export async function resolveBootstrapFilesForRun(params: {
         sessionKey: params.sessionKey,
       })
     : await loadWorkspaceBootstrapFiles(params.workspaceDir);
+
+  const personaMode = params.config?.agents?.defaults?.personaMode;
+  if (personaMode && personaMode !== "agent") {
+    const personaFile = await loadPersonaBootstrapFile(params.workspaceDir, personaMode);
+    if (personaFile) {
+      rawFiles.push(personaFile);
+    }
+  }
+
   const bootstrapFiles = applyContextModeFilter({
     files: filterBootstrapFilesForSession(rawFiles, sessionKey),
     contextMode: params.contextMode,

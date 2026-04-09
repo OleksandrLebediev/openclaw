@@ -156,6 +156,12 @@ export type AgentDefaultsConfig = {
   /** Skip bootstrap (BOOTSTRAP.md creation, etc.) for pre-configured deployments. */
   skipBootstrap?: boolean;
   /**
+   * Persona overlay mode. When set to "human", loads `persona/<mode>.md` from the workspace
+   * as `PERSONA.md` into the bootstrap context, enabling digital-human persona deployments.
+   * Omit or set to "agent" to disable the overlay (default behavior).
+   */
+  personaMode?: "agent" | "human";
+  /**
    * Controls when workspace bootstrap files (AGENTS.md, SOUL.md, etc.) are
    * injected into the system prompt:
    * - always: inject on every turn (default)

@@ -31,6 +31,8 @@ export const DEFAULT_HEARTBEAT_FILENAME = "HEARTBEAT.md";
 export const DEFAULT_BOOTSTRAP_FILENAME = "BOOTSTRAP.md";
 export const DEFAULT_MEMORY_FILENAME = "MEMORY.md";
 export const DEFAULT_MEMORY_ALT_FILENAME = "memory.md";
+export const DEFAULT_PERSONA_FILENAME = "PERSONA.md";
+export const DEFAULT_PERSONA_DIR = "persona";
 const WORKSPACE_STATE_DIRNAME = ".openclaw";
 const WORKSPACE_STATE_FILENAME = "workspace-state.json";
 const WORKSPACE_STATE_VERSION = 1;
@@ -138,7 +140,8 @@ export type WorkspaceBootstrapFileName =
   | typeof DEFAULT_HEARTBEAT_FILENAME
   | typeof DEFAULT_BOOTSTRAP_FILENAME
   | typeof DEFAULT_MEMORY_FILENAME
-  | typeof DEFAULT_MEMORY_ALT_FILENAME;
+  | typeof DEFAULT_MEMORY_ALT_FILENAME
+  | typeof DEFAULT_PERSONA_FILENAME;
 
 export type WorkspaceBootstrapFile = {
   name: WorkspaceBootstrapFileName;
@@ -484,6 +487,46 @@ async function resolveMemoryBootstrapEntry(
   return null;
 }
 
+export async function resolvePersonaBootstrapEntry(
+  resolvedDir: string,
+  personaMode: string,
+): Promise<{ name: WorkspaceBootstrapFileName; filePath: string } | null> {
+  if (!personaMode || personaMode === "agent") {
+    return null;
+  }
+  // Sanitize to safe filename segment — only lowercase alphanum, dash, underscore.
+  const safe = personaMode.replace(/[^a-z0-9_-]/gu, "");
+  if (!safe) {
+    return null;
+  }
+  const filePath = path.join(resolvedDir, DEFAULT_PERSONA_DIR, `${safe}.md`);
+  try {
+    await fs.access(filePath);
+    return { name: DEFAULT_PERSONA_FILENAME, filePath };
+  } catch {
+    return null;
+  }
+}
+
+export async function loadPersonaBootstrapFile(
+  dir: string,
+  personaMode: string,
+): Promise<WorkspaceBootstrapFile | null> {
+  const resolvedDir = resolveUserPath(dir);
+  const entry = await resolvePersonaBootstrapEntry(resolvedDir, personaMode);
+  if (!entry) {
+    return null;
+  }
+  const loaded = await readWorkspaceFileWithGuards({
+    filePath: entry.filePath,
+    workspaceDir: resolvedDir,
+  });
+  if (loaded.ok) {
+    return { name: entry.name, path: entry.filePath, content: loaded.content, missing: false };
+  }
+  return { name: entry.name, path: entry.filePath, missing: true };
+}
+
 export async function loadWorkspaceBootstrapFiles(dir: string): Promise<WorkspaceBootstrapFile[]> {
   const resolvedDir = resolveUserPath(dir);
 
@@ -552,6 +595,7 @@ const MINIMAL_BOOTSTRAP_ALLOWLIST = new Set([
   DEFAULT_SOUL_FILENAME,
   DEFAULT_IDENTITY_FILENAME,
   DEFAULT_USER_FILENAME,
+  DEFAULT_PERSONA_FILENAME,
 ]);
 
 export function filterBootstrapFilesForSession(

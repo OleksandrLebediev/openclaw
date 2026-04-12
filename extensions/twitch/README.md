@@ -40,7 +40,7 @@ Minimal config (simplified single-account):
 **Access control options:**
 
 - `requireMention: false` - Disable the default mention requirement to respond to all messages
-- `allowFrom: ["your_user_id"]` - Restrict to your Twitch user ID only (find your ID at https://www.twitchangles.com/xqc or similar)
+- `allowFrom: ["your_user_id"]` - Restrict to your Twitch user ID only (find your ID at [https://www.twitchangles.com/xqc](https://www.twitchangles.com/xqc) or similar)
 - `allowedRoles: ["moderator", "vip", "subscriber"]` - Restrict to specific roles
 
 Multi-account config (advanced):
@@ -72,15 +72,17 @@ Multi-account config (advanced):
 ## Setup
 
 1. Create a dedicated Twitch account for the bot, then generate credentials: [Twitch Token Generator](https://twitchtokengenerator.com/)
-   - Select **Bot Token**
-   - Verify scopes `chat:read` and `chat:write` are selected
-   - Copy the **Access Token** to `token` property
-   - Copy the **Client ID** to `clientId` property
+
+- Select **Bot Token**
+- Verify scopes `chat:read` and `chat:write` are selected
+- Copy the **Access Token** to `token` property
+- Copy the **Client ID** to `clientId` property
+
 2. Start the gateway
 
 ## Full documentation
 
-See https://docs.openclaw.ai/channels/twitch for:
+See [https://docs.openclaw.ai/channels/twitch](https://docs.openclaw.ai/channels/twitch) for:
 
 - Token refresh setup
 - Access control patterns

@@ -9,8 +9,8 @@ import {
   waitForEmbeddedPiRunEnd,
 } from "../../agents/pi-embedded-runner/runs.js";
 import { compactEmbeddedPiSession } from "../../agents/pi-embedded.js";
-import { normalizeReasoningLevel, normalizeThinkLevel } from "../../auto-reply/thinking.js";
 import { clearSessionQueues } from "../../auto-reply/reply/queue/cleanup.js";
+import { normalizeReasoningLevel, normalizeThinkLevel } from "../../auto-reply/thinking.js";
 import { loadConfig } from "../../config/config.js";
 import {
   loadSessionStore,

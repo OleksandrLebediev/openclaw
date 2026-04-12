@@ -11,9 +11,6 @@
     "https-proxy-agent": "^9.0.0",
     "opusscript": "^0.1.1"
   },
-  "optionalDependencies": {
-    "@discordjs/opus": "^0.10.0"
-  },
   "devDependencies": {
     "openclaw": "workspace:*"
   },
@@ -24,6 +21,9 @@
     "openclaw": {
       "optional": true
     }
+  },
+  "optionalDependencies": {
+    "@discordjs/opus": "^0.10.0"
   },
   "openclaw": {
     "extensions": [

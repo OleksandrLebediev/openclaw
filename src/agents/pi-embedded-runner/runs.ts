@@ -57,7 +57,8 @@ const embeddedRunState = resolveGlobalSingleton(EMBEDDED_RUN_STATE_KEY, () => ({
   modelSwitchRequests: new Map<string, EmbeddedRunModelSwitchRequest>(),
 }));
 const ACTIVE_EMBEDDED_RUNS =
-  embeddedRunState.activeRuns ?? (embeddedRunState.activeRuns = new Map<string, EmbeddedPiQueueHandle>());
+  embeddedRunState.activeRuns ??
+  (embeddedRunState.activeRuns = new Map<string, EmbeddedPiQueueHandle>());
 const ACTIVE_EMBEDDED_RUN_SNAPSHOTS =
   embeddedRunState.snapshots ??
   (embeddedRunState.snapshots = new Map<string, ActiveEmbeddedRunSnapshot>());
@@ -65,7 +66,8 @@ const ACTIVE_EMBEDDED_RUN_SESSION_IDS_BY_KEY =
   embeddedRunState.sessionIdsByKey ??
   (embeddedRunState.sessionIdsByKey = new Map<string, string>());
 const EMBEDDED_RUN_WAITERS =
-  embeddedRunState.waiters ?? (embeddedRunState.waiters = new Map<string, Set<EmbeddedRunWaiter>>());
+  embeddedRunState.waiters ??
+  (embeddedRunState.waiters = new Map<string, Set<EmbeddedRunWaiter>>());
 const EMBEDDED_RUN_MODEL_SWITCH_REQUESTS =
   embeddedRunState.modelSwitchRequests ??
   (embeddedRunState.modelSwitchRequests = new Map<string, EmbeddedRunModelSwitchRequest>());

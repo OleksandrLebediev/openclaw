@@ -536,6 +536,7 @@ export const AgentAvailabilitySchema = z
       .strict()
       .optional(),
     readingSpeed: AgentReadingSpeedSchema.optional(),
+    writingSpeed: AgentReadingSpeedSchema.optional(),
   })
   .strict();
 

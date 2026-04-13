@@ -4796,6 +4796,37 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     additionalProperties: false,
                     title: "Reading Speed",
                   },
+                  writingSpeed: {
+                    type: "object",
+                    properties: {
+                      wpm: {
+                        type: "integer",
+                        exclusiveMinimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Writing Speed (wpm)",
+                        description:
+                          "Typing speed for outbound final replies in typing-test words per minute (default: 200). One word = 5 characters including spaces; delay runs before the final message is sent.",
+                      },
+                      minMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Writing Delay Min (ms)",
+                        description:
+                          "Minimum outbound typing delay in ms regardless of length (default: 1000).",
+                      },
+                      maxMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Writing Delay Max (ms)",
+                        description:
+                          "Maximum outbound typing delay cap in ms regardless of length (default: 15000).",
+                      },
+                    },
+                    additionalProperties: false,
+                    title: "Writing Speed",
+                  },
                 },
                 additionalProperties: false,
                 title: "Agent Availability",
@@ -6205,6 +6236,34 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       },
                       additionalProperties: false,
                       title: "Reading Speed",
+                    },
+                    writingSpeed: {
+                      type: "object",
+                      properties: {
+                        wpm: {
+                          type: "integer",
+                          exclusiveMinimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Writing Speed (wpm)",
+                          description: "Per-agent outbound typing speed (wpm, 5 chars = 1 word).",
+                        },
+                        minMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Writing Delay Min (ms)",
+                          description: "Per-agent minimum outbound typing delay in ms.",
+                        },
+                        maxMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Writing Delay Max (ms)",
+                          description: "Per-agent maximum outbound typing delay cap in ms.",
+                        },
+                      },
+                      additionalProperties: false,
+                      title: "Writing Speed",
                     },
                   },
                   additionalProperties: false,
@@ -25537,6 +25596,25 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Maximum reading delay cap in ms regardless of message length (default: 15000).",
       tags: ["performance"],
     },
+    "agents.defaults.availability.writingSpeed": {
+      label: "Writing Speed",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.writingSpeed.wpm": {
+      label: "Writing Speed (wpm)",
+      help: "Typing speed for outbound final replies in typing-test words per minute (default: 200). One word = 5 characters including spaces; delay runs before the final message is sent.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.writingSpeed.minMs": {
+      label: "Writing Delay Min (ms)",
+      help: "Minimum outbound typing delay in ms regardless of length (default: 1000).",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.writingSpeed.maxMs": {
+      label: "Writing Delay Max (ms)",
+      help: "Maximum outbound typing delay cap in ms regardless of length (default: 15000).",
+      tags: ["performance"],
+    },
     "agents.list[].availability": {
       label: "Agent Availability",
       tags: ["advanced"],
@@ -25624,6 +25702,25 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "agents.list[].availability.readingSpeed.maxMs": {
       label: "Reading Delay Max (ms)",
       help: "Per-agent maximum reading delay cap in ms.",
+      tags: ["performance"],
+    },
+    "agents.list[].availability.writingSpeed": {
+      label: "Writing Speed",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.writingSpeed.wpm": {
+      label: "Writing Speed (wpm)",
+      help: "Per-agent outbound typing speed (wpm, 5 chars = 1 word).",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.writingSpeed.minMs": {
+      label: "Writing Delay Min (ms)",
+      help: "Per-agent minimum outbound typing delay in ms.",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.writingSpeed.maxMs": {
+      label: "Writing Delay Max (ms)",
+      help: "Per-agent maximum outbound typing delay cap in ms.",
       tags: ["performance"],
     },
     "agents.defaults.cliBackends": {

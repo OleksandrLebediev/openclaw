@@ -4,6 +4,7 @@ import type { AgentTimeWindow } from "../config/types.base.js";
 import {
   computeBusyDelayMs,
   computeReadingDelayMs,
+  computeWritingDelayMs,
   hasAvailabilityWindow,
   isInTimeWindow,
   msUntilLeaveTimeWindow,
@@ -160,6 +161,42 @@ describe("computeReadingDelayMs", () => {
   });
 });
 
+describe("computeWritingDelayMs", () => {
+  it("returns 0 when no config", () => {
+    expect(computeWritingDelayMs("hello", undefined)).toBe(0);
+  });
+
+  it("returns 0 for empty string even when config is set", () => {
+    expect(computeWritingDelayMs("", { wpm: 200, minMs: 1000, maxMs: 20_000 })).toBe(0);
+  });
+
+  it("uses 5 characters as one typing word", () => {
+    // 5 chars → 1 word at 60 wpm = 1000ms raw
+    expect(computeWritingDelayMs("hello", { wpm: 60, minMs: 500, maxMs: 20_000 })).toBe(1000);
+  });
+
+  it("ceil fractional words from character count", () => {
+    // 6 chars → ceil(6/5)=2 words at 120 wpm = 1000ms raw
+    expect(computeWritingDelayMs("abcdef", { wpm: 120, minMs: 100, maxMs: 20_000 })).toBe(1000);
+  });
+
+  it("clamps to minMs", () => {
+    // 5 chars → 1 word at 200 wpm = 300ms → min 2000
+    expect(computeWritingDelayMs("hello", { wpm: 200, minMs: 2000, maxMs: 20_000 })).toBe(2000);
+  });
+
+  it("clamps to maxMs", () => {
+    const long = "a".repeat(5000);
+    expect(computeWritingDelayMs(long, { wpm: 200, minMs: 1000, maxMs: 15_000 })).toBe(15_000);
+  });
+
+  it("uses default wpm when not set", () => {
+    // 5000 chars → 1000 typing words, default wpm 200 → 300_000ms raw → clamp max 120_000
+    const text = "a".repeat(5000);
+    expect(computeWritingDelayMs(text, { minMs: 1000, maxMs: 120_000 })).toBe(120_000);
+  });
+});
+
 describe("computeBusyDelayMs", () => {
   it("returns value within default range when no config", () => {
     const ms = computeBusyDelayMs(undefined);
@@ -220,6 +257,17 @@ describe("resolveAgentAvailabilityConfig", () => {
     const result = resolveAgentAvailabilityConfig(cfg, "test-agent");
     // Per-agent readingSpeed replaces the whole sub-object (field-level merge only at top).
     expect(result?.readingSpeed?.wpm).toBe(150);
+  });
+
+  it("merges writingSpeed fields from defaults when per-agent has partial override", () => {
+    const cfg = makeCfg(
+      { writingSpeed: { wpm: 200, minMs: 1000, maxMs: 15000 } },
+      { writingSpeed: { minMs: 2000 } },
+    );
+    const result = resolveAgentAvailabilityConfig(cfg, "test-agent");
+    expect(result?.writingSpeed?.wpm).toBe(200);
+    expect(result?.writingSpeed?.minMs).toBe(2000);
+    expect(result?.writingSpeed?.maxMs).toBe(15000);
   });
 
   it("inherits busyWindows from defaults when agent has none", () => {

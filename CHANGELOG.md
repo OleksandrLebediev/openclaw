@@ -6,6 +6,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 
 ### Changes
 
+- Agents/availability: add optional `writingSpeed` (same shape as `readingSpeed`) for a simulated typing delay before final outbound text is sent, using typing-test words (five characters per word). Control UI **Agents → Availability** includes a Writing speed section.
 - Agents/availability: add `inactiveHours` (preferred) so operators schedule offline time directly; when set it overrides `activeHours`. Control UI **Agents → Availability** edits inactive hours by default.
 - Plugins/webhooks: add a bundled webhook ingress plugin so external automation can create and drive bound TaskFlows through per-route shared-secret endpoints. (#61892) Thanks @mbelinky.
 - Tools/media generation: preserve intent across auth-backed image, music, and video provider fallback, remap size, aspect ratio, resolution, and duration hints to the closest supported option, and surface explicit provider capabilities plus mode-aware video-to-video support.

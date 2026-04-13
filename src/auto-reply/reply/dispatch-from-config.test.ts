@@ -19,6 +19,7 @@ import {
   createTestRegistry,
 } from "../../test-utils/channel-plugins.js";
 import { createInternalHookEventPayload } from "../../test-utils/internal-hook-event-payload.js";
+import * as utils from "../../utils.js";
 import type { MsgContext } from "../templating.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import type { ReplyDispatcher } from "./reply-dispatcher.js";
@@ -3138,5 +3139,80 @@ describe("before_dispatch hook", () => {
     });
     expect(hookMocks.runner.runBeforeDispatch).toHaveBeenCalled();
     expect(dispatcher.sendFinalReply).toHaveBeenCalledWith({ text: "model reply" });
+  });
+
+  it("applies writingSpeed delay before final send (chunked sleep)", async () => {
+    setNoAbort();
+    const sleepSpy = vi.spyOn(utils, "sleep").mockResolvedValue(undefined);
+    try {
+      const cfg = {
+        agents: {
+          defaults: {
+            availability: {
+              writingSpeed: { wpm: 60, minMs: 1000, maxMs: 10_000 },
+            },
+          },
+        },
+      } as OpenClawConfig;
+      const dispatcher = createDispatcher();
+      const ctx = buildTestCtx({
+        Provider: "slack",
+        Surface: undefined,
+        OriginatingChannel: "slack",
+        OriginatingTo: "channel:C123",
+      });
+      const onReplyStart = vi.fn(async () => {});
+
+      await dispatchReplyFromConfig({
+        ctx,
+        cfg,
+        dispatcher,
+        replyResolver: async () => ({ text: "hello" }),
+        replyOptions: { onReplyStart },
+      });
+
+      expect(onReplyStart).toHaveBeenCalledTimes(1);
+      const totalSlept = sleepSpy.mock.calls.reduce((acc, call) => acc + Number(call[0] ?? 0), 0);
+      expect(totalSlept).toBe(1000);
+      expect(dispatcher.sendFinalReply).toHaveBeenCalledWith({ text: "hello" });
+    } finally {
+      sleepSpy.mockRestore();
+    }
+  });
+
+  it("skips writingSpeed delay for heartbeats", async () => {
+    setNoAbort();
+    const sleepSpy = vi.spyOn(utils, "sleep").mockResolvedValue(undefined);
+    try {
+      const cfg = {
+        agents: {
+          defaults: {
+            availability: {
+              writingSpeed: { wpm: 60, minMs: 1000, maxMs: 10_000 },
+            },
+          },
+        },
+      } as OpenClawConfig;
+      const dispatcher = createDispatcher();
+      const ctx = buildTestCtx({
+        Provider: "slack",
+        Surface: undefined,
+        OriginatingChannel: "slack",
+        OriginatingTo: "channel:C123",
+      });
+
+      await dispatchReplyFromConfig({
+        ctx,
+        cfg,
+        dispatcher,
+        replyResolver: async () => ({ text: "hello" }),
+        replyOptions: { isHeartbeat: true },
+      });
+
+      expect(sleepSpy).not.toHaveBeenCalled();
+      expect(dispatcher.sendFinalReply).toHaveBeenCalledWith({ text: "hello" });
+    } finally {
+      sleepSpy.mockRestore();
+    }
   });
 });

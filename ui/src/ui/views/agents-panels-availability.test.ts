@@ -63,6 +63,7 @@ describe("renderAgentAvailability", () => {
     expect(text).toContain("Busy Windows");
     expect(text).toContain("Busy Window Delay");
     expect(text).toContain("Reading Speed");
+    expect(text).toContain("Writing Speed");
   });
 
   it("shows default timezone hint from agents.defaults", async () => {

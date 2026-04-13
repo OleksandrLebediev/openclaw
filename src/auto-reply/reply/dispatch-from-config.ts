@@ -3,6 +3,10 @@ import { isParentOwnedBackgroundAcpSession } from "../../acp/session-interaction
 import { resolveAgentConfig, resolveSessionAgentId } from "../../agents/agent-scope.js";
 import { applyAvailabilityWait } from "../../agents/availability-wait.js";
 import {
+  computeWritingDelayMs,
+  resolveAgentAvailabilityConfig,
+} from "../../agents/availability.js";
+import {
   resolveConversationBindingRecord,
   touchConversationBindingRecord,
 } from "../../bindings/records.js";
@@ -38,9 +42,16 @@ import {
 import { getGlobalHookRunner, getGlobalPluginRegistry } from "../../plugins/hook-runner-global.js";
 import { resolveSendPolicy } from "../../sessions/send-policy.js";
 import { normalizeTtsAutoMode, resolveConfiguredTtsMode } from "../../tts/tts-config.js";
+import { sleep } from "../../utils.js";
 import { normalizeMessageChannel } from "../../utils/message-channel.js";
 import type { FinalizedMsgContext } from "../templating.js";
 import { normalizeVerboseLevel } from "../thinking.js";
+import {
+  HEARTBEAT_TOKEN,
+  isSilentReplyPrefixText,
+  isSilentReplyText,
+  SILENT_REPLY_TOKEN,
+} from "../tokens.js";
 import {
   getReplyPayloadMetadata,
   type BlockReplyContext,
@@ -58,6 +69,19 @@ import { shouldSkipDuplicateInbound } from "./inbound-dedupe.js";
 import type { ReplyDispatcher, ReplyDispatchKind } from "./reply-dispatcher.js";
 import { resolveReplyRoutingDecision } from "./routing-policy.js";
 import { resolveRunTypingPolicy } from "./typing-policy.js";
+
+async function sleepUnlessAborted(ms: number, signal: AbortSignal | undefined): Promise<void> {
+  const slice = 250;
+  let remaining = ms;
+  while (remaining > 0) {
+    if (signal?.aborted) {
+      return;
+    }
+    const step = Math.min(slice, remaining);
+    await sleep(step);
+    remaining -= step;
+  }
+}
 
 let routeReplyRuntimePromise: Promise<typeof import("./route-reply.runtime.js")> | null = null;
 let getReplyFromConfigRuntimePromise: Promise<
@@ -574,6 +598,27 @@ export async function dispatchReplyFromConfig(params: {
     const sendFinalPayload = async (
       payload: ReplyPayload,
     ): Promise<{ queuedFinal: boolean; routedFinalCount: number }> => {
+      const writingCfg = resolveAgentAvailabilityConfig(cfg, sessionAgentId)?.writingSpeed;
+      const outboundText = typeof payload.text === "string" ? payload.text : "";
+      const bodyTrimmed = outboundText.trim();
+      const skipWritingDelay =
+        !writingCfg ||
+        params.replyOptions?.isHeartbeat === true ||
+        bodyTrimmed.length === 0 ||
+        isSilentReplyText(outboundText, SILENT_REPLY_TOKEN) ||
+        isSilentReplyPrefixText(outboundText, SILENT_REPLY_TOKEN) ||
+        isSilentReplyPrefixText(outboundText, HEARTBEAT_TOKEN);
+      if (!skipWritingDelay && writingCfg) {
+        const delayMs = computeWritingDelayMs(bodyTrimmed, writingCfg);
+        if (delayMs > 0) {
+          await params.replyOptions?.onReplyStart?.();
+          logVerbose(
+            `[writingSpeed] delaying final reply ${Math.round(delayMs / 1000)}s (${bodyTrimmed.length} chars)`,
+          );
+          await sleepUnlessAborted(delayMs, params.replyOptions?.abortSignal);
+        }
+      }
+
       const ttsPayload = await maybeApplyTtsToReplyPayload({
         payload,
         cfg,

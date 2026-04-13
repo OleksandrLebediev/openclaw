@@ -1204,6 +1204,12 @@ export const FIELD_HELP: Record<string, string> = {
     "Minimum reading delay in ms regardless of message length (default: 1000).",
   "agents.defaults.availability.readingSpeed.maxMs":
     "Maximum reading delay cap in ms regardless of message length (default: 15000).",
+  "agents.defaults.availability.writingSpeed.wpm":
+    "Typing speed for outbound final replies in typing-test words per minute (default: 200). One word = 5 characters including spaces; delay runs before the final message is sent.",
+  "agents.defaults.availability.writingSpeed.minMs":
+    "Minimum outbound typing delay in ms regardless of length (default: 1000).",
+  "agents.defaults.availability.writingSpeed.maxMs":
+    "Maximum outbound typing delay cap in ms regardless of length (default: 15000).",
   "agents.list[].availability.timezone":
     'Per-agent timezone override for scheduling windows (IANA id or "local").',
   "agents.list[].availability.inactiveHours":
@@ -1223,6 +1229,11 @@ export const FIELD_HELP: Record<string, string> = {
   "agents.list[].availability.readingSpeed.wpm": "Per-agent reading speed in words per minute.",
   "agents.list[].availability.readingSpeed.minMs": "Per-agent minimum reading delay in ms.",
   "agents.list[].availability.readingSpeed.maxMs": "Per-agent maximum reading delay cap in ms.",
+  "agents.list[].availability.writingSpeed.wpm":
+    "Per-agent outbound typing speed (wpm, 5 chars = 1 word).",
+  "agents.list[].availability.writingSpeed.minMs": "Per-agent minimum outbound typing delay in ms.",
+  "agents.list[].availability.writingSpeed.maxMs":
+    "Per-agent maximum outbound typing delay cap in ms.",
   commands:
     "Controls chat command surfaces, owner gating, and elevated command access behavior across providers. Keep defaults unless you need stricter operator controls or broader command availability.",
   "commands.native":

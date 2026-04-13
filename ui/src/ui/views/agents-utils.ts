@@ -173,6 +173,7 @@ export type AgentAvailabilityConfig = {
   offlineMode?: "queue" | "immediate";
   busyDelay?: { minMs?: number; maxMs?: number };
   readingSpeed?: { wpm?: number; minMs?: number; maxMs?: number };
+  writingSpeed?: { wpm?: number; minMs?: number; maxMs?: number };
 };
 
 type AgentConfigEntry = {

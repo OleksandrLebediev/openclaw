@@ -1,5 +1,9 @@
 import type { OpenClawConfig } from "../config/config.js";
-import type { AgentAvailabilityConfig, AgentTimeWindow } from "../config/types.base.js";
+import type {
+  AgentAvailabilityConfig,
+  AgentReadingSpeedConfig,
+  AgentTimeWindow,
+} from "../config/types.base.js";
 import { resolveAgentConfig } from "./agent-scope.js";
 
 const DEFAULT_BUSY_DELAY_MIN_MS = 60_000;
@@ -7,6 +11,8 @@ const DEFAULT_BUSY_DELAY_MAX_MS = 300_000;
 const DEFAULT_READING_WPM = 200;
 const DEFAULT_READING_MIN_MS = 1_000;
 const DEFAULT_READING_MAX_MS = 15_000;
+/** Typing-test "word" = 5 characters; used for outbound writing delay. */
+const TYPING_STANDARD_CHARS_PER_WORD = 5;
 
 const DAY_INDEX: Record<string, number> = {
   sun: 0,
@@ -47,6 +53,14 @@ export function resolveAgentAvailabilityConfig(
             wpm: overrides?.readingSpeed?.wpm ?? defaults?.readingSpeed?.wpm,
             minMs: overrides?.readingSpeed?.minMs ?? defaults?.readingSpeed?.minMs,
             maxMs: overrides?.readingSpeed?.maxMs ?? defaults?.readingSpeed?.maxMs,
+          }
+        : undefined,
+    writingSpeed:
+      overrides?.writingSpeed || defaults?.writingSpeed
+        ? {
+            wpm: overrides?.writingSpeed?.wpm ?? defaults?.writingSpeed?.wpm,
+            minMs: overrides?.writingSpeed?.minMs ?? defaults?.writingSpeed?.minMs,
+            maxMs: overrides?.writingSpeed?.maxMs ?? defaults?.writingSpeed?.maxMs,
           }
         : undefined,
   };
@@ -220,6 +234,31 @@ export function computeReadingDelayMs(
   }
 
   const rawMs = Math.ceil((wordCount / wpm) * 60_000);
+  return Math.min(Math.max(rawMs, minMs), maxMs);
+}
+
+/**
+ * Delay before sending a final text reply, from character count and WPM using the
+ * typing-test convention: one word = 5 characters (including spaces).
+ */
+export function computeWritingDelayMs(
+  text: string,
+  config: AgentReadingSpeedConfig | undefined,
+): number {
+  if (!config) {
+    return 0;
+  }
+  const charCount = text.length;
+  if (charCount === 0) {
+    return 0;
+  }
+
+  const wpm = config.wpm ?? DEFAULT_READING_WPM;
+  const minMs = config.minMs ?? DEFAULT_READING_MIN_MS;
+  const maxMs = config.maxMs ?? DEFAULT_READING_MAX_MS;
+
+  const standardWords = Math.ceil(charCount / TYPING_STANDARD_CHARS_PER_WORD);
+  const rawMs = Math.ceil((standardWords / wpm) * 60_000);
   return Math.min(Math.max(rawMs, minMs), maxMs);
 }
 

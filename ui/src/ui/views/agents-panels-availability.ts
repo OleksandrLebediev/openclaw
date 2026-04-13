@@ -267,6 +267,9 @@ export function renderAgentAvailability(params: {
   // Reading speed
   const readingSpeed = avail.readingSpeed ?? {};
 
+  // Writing speed (outbound typing delay)
+  const writingSpeed = avail.writingSpeed ?? {};
+
   // Busy delay
   const busyDelay = avail.busyDelay ?? {};
 
@@ -611,6 +614,81 @@ export function renderAgentAvailability(params: {
                   patch(["readingSpeed", "maxMs"], Math.round(v * 1000));
                 } else {
                   remove(["readingSpeed", "maxMs"]);
+                }
+              }}
+            />
+          </label>
+        </div>
+      </section>
+
+      <!-- Writing Speed -->
+      <section class="card">
+        <div class="card-title">Writing Speed</div>
+        <div class="card-sub">
+          Simulated typing delay before the final outbound text is sent. Length uses the standard
+          typing-test convention (5 characters = one word), then the delay is clamped to min/max.
+        </div>
+        <div class="availability-row availability-field-block">
+          <label class="field field--inline">
+            <span>Writing speed (wpm)</span>
+            <input
+              type="number"
+              class="input--sm"
+              min="1"
+              step="10"
+              placeholder="200"
+              .value=${writingSpeed.wpm !== undefined ? String(writingSpeed.wpm) : ""}
+              ?disabled=${disabled}
+              @change=${(e: Event) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                if (v > 0) {
+                  patch(["writingSpeed", "wpm"], v);
+                } else {
+                  remove(["writingSpeed", "wpm"]);
+                }
+              }}
+            />
+          </label>
+          <label class="field field--inline">
+            <span>Min writing delay (sec)</span>
+            <input
+              type="number"
+              class="input--sm"
+              min="0"
+              step="1"
+              placeholder="1"
+              .value=${writingSpeed.minMs !== undefined
+                ? String(Math.round(writingSpeed.minMs / 1000))
+                : ""}
+              ?disabled=${disabled}
+              @change=${(e: Event) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                if (!Number.isNaN(v) && v >= 0) {
+                  patch(["writingSpeed", "minMs"], Math.round(v * 1000));
+                } else {
+                  remove(["writingSpeed", "minMs"]);
+                }
+              }}
+            />
+          </label>
+          <label class="field field--inline">
+            <span>Max writing delay (sec)</span>
+            <input
+              type="number"
+              class="input--sm"
+              min="0"
+              step="1"
+              placeholder="15"
+              .value=${writingSpeed.maxMs !== undefined
+                ? String(Math.round(writingSpeed.maxMs / 1000))
+                : ""}
+              ?disabled=${disabled}
+              @change=${(e: Event) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                if (!Number.isNaN(v) && v >= 0) {
+                  patch(["writingSpeed", "maxMs"], Math.round(v * 1000));
+                } else {
+                  remove(["writingSpeed", "maxMs"]);
                 }
               }}
             />

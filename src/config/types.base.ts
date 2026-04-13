@@ -134,6 +134,12 @@ export type AgentAvailabilityConfig = {
   busyDelay?: { minMs?: number; maxMs?: number };
   /** How fast the agent "reads" an incoming message before starting to reply. */
   readingSpeed?: AgentReadingSpeedConfig;
+  /**
+   * Simulated typing speed before delivering a final text reply. Uses the same
+   * `{ wpm, minMs, maxMs }` shape as `readingSpeed`. WPM follows the typing-test
+   * convention: one "word" = 5 characters (including spaces).
+   */
+  writingSpeed?: AgentReadingSpeedConfig;
 };
 
 export type SessionSendPolicyAction = "allow" | "deny";

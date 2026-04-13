@@ -112,6 +112,8 @@ export type ProbeReport = {
   host: string;
   results: ProbeResult[];
   baseline: BaselineEntry[] | null;
+  /** Optional harness label for reports (e.g. `availability-probe`). */
+  harness?: string;
 };
 
 /** CLI options passed to the runner. */

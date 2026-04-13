@@ -67,9 +67,10 @@ function truncate(s: string, n: number): string {
 
 export function printTerminalReport(report: ProbeReport, diffs: DiffEntry[]): void {
   const { results, agent, host, runAt } = report;
+  const harness = report.harness ?? "persona-probe";
 
   process.stdout.write(
-    `\n${c.bold}[persona-probe]${c.reset} ${c.cyan}${agent}${c.reset} @ ${c.cyan}${host}${c.reset}  ${c.gray}${runAt}${c.reset}\n\n`,
+    `\n${c.bold}[${harness}]${c.reset} ${c.cyan}${agent}${c.reset} @ ${c.cyan}${host}${c.reset}  ${c.gray}${runAt}${c.reset}\n\n`,
   );
 
   // Group results
@@ -131,7 +132,7 @@ export function printTerminalReport(report: ProbeReport, diffs: DiffEntry[]): vo
       const wasColor = verdictColor(d.was);
       const nowColor = verdictColor(d.now);
       const label =
-        d.was === "pass" && d.verdict !== "pass"
+        d.was === "pass" && d.now !== "pass"
           ? `${c.red}REGRESS${c.reset}`
           : `${c.green}FIXED  ${c.reset}`;
       process.stdout.write(
@@ -151,9 +152,10 @@ function mdEscape(s: string): string {
 
 function buildMarkdown(report: ProbeReport, diffs: DiffEntry[]): string {
   const { results, agent, host, runAt } = report;
+  const harness = report.harness ?? "persona-probe";
   const lines: string[] = [];
 
-  lines.push(`# Persona Probe Report`);
+  lines.push(`# ${harness === "persona-probe" ? "Persona Probe" : harness} Report`);
   lines.push(``);
   lines.push(`| Field | Value |`);
   lines.push(`|-------|-------|`);

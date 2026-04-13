@@ -1,6 +1,33 @@
 import { render } from "lit";
 import { describe, expect, it, vi } from "vitest";
-import { renderAgentAvailability } from "./agents-panels-availability.ts";
+import {
+  formatUtcOffsetLabelForConfigValue,
+  parseGmtOffsetToCompact,
+  renderAgentAvailability,
+} from "./agents-panels-availability.ts";
+
+describe("parseGmtOffsetToCompact", () => {
+  it("maps bare GMT to +0", () => {
+    expect(parseGmtOffsetToCompact("GMT")).toBe("+0");
+  });
+  it("maps GMT+03:00 to +3", () => {
+    expect(parseGmtOffsetToCompact("GMT+03:00")).toBe("+3");
+  });
+  it("maps GMT-04:00 to -4", () => {
+    expect(parseGmtOffsetToCompact("GMT-04:00")).toBe("-4");
+  });
+  it("keeps half-hour offsets", () => {
+    expect(parseGmtOffsetToCompact("GMT+05:30")).toBe("+5:30");
+  });
+});
+
+describe("formatUtcOffsetLabelForConfigValue", () => {
+  it("resolves UTC at a fixed instant", () => {
+    const when = new Date("2024-06-15T12:00:00Z");
+    expect(formatUtcOffsetLabelForConfigValue("UTC", when)).toBe("+0");
+    expect(formatUtcOffsetLabelForConfigValue("Europe/Kyiv", when)).toBe("+3");
+  });
+});
 
 function baseConfigForm(agentId: string, availability?: Record<string, unknown>) {
   return {

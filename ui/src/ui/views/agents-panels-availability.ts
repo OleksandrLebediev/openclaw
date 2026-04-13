@@ -84,6 +84,62 @@ function getSortedIanaTimeZones(): string[] {
   return cachedSortedZones;
 }
 
+/** Parses Intl `longOffset` strings like `GMT`, `GMT+3:00`, `GMT-04:00`, `GMT+05:30`. */
+export function parseGmtOffsetToCompact(longOffset: string): string {
+  const t = longOffset.trim();
+  if (/^GMT$/i.test(t)) {
+    return "+0";
+  }
+  const m = /^GMT(?<sign>[+-])(?<h>\d{1,2})(?::(?<min>\d{2}))?$/i.exec(t);
+  if (!m?.groups?.sign) {
+    return "";
+  }
+  const sign = m.groups.sign;
+  const h = String(Number(m.groups.h));
+  const min = m.groups.min;
+  if (min && min !== "00") {
+    return `${sign}${h}:${min}`;
+  }
+  return `${sign}${h}`;
+}
+
+/** Current UTC offset label for config values (`local` = host zone, IANA otherwise). */
+export function formatUtcOffsetLabelForConfigValue(value: string, when: Date): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const resolved =
+    trimmed === "local" ? (Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC") : trimmed;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: resolved,
+      timeZoneName: "longOffset",
+    }).formatToParts(when);
+    const raw = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+    return parseGmtOffsetToCompact(raw);
+  } catch {
+    return "";
+  }
+}
+
+function buildTimezoneOffsetMemo(when: Date) {
+  const memo = new Map<string, string>();
+  return (configValue: string): string => {
+    let cached = memo.get(configValue);
+    if (cached === undefined) {
+      cached = formatUtcOffsetLabelForConfigValue(configValue, when);
+      memo.set(configValue, cached);
+    }
+    return cached;
+  };
+}
+
+function timezoneSelectLabel(configValue: string, offsetOf: (v: string) => string): string {
+  const off = offsetOf(configValue);
+  return off ? `${configValue} (${off})` : configValue;
+}
+
 function resolveAvailability(
   configForm: Record<string, unknown> | null,
   agentId: string,
@@ -220,6 +276,14 @@ export function renderAgentAvailability(params: {
   const showCustomTimezoneOption =
     timezoneValue !== "" && timezoneValue !== "local" && !ianaZoneSet.has(timezoneValue);
 
+  const offsetWhen = new Date();
+  const offsetOf = buildTimezoneOffsetMemo(offsetWhen);
+  const localOffset = offsetOf("local");
+  const localOptionLabel = localOffset
+    ? `Local (host timezone) (${localOffset})`
+    : "Local (host timezone)";
+  const customTzOffset = showCustomTimezoneOption ? offsetOf(timezoneValue) : "";
+
   return html`
     <div class="availability-panel">
       <div class="availability-panel-actions panel-actions-row">
@@ -251,7 +315,9 @@ export function renderAgentAvailability(params: {
         <div class="card-title">Timezone</div>
         <div class="card-sub">
           All scheduling windows are evaluated in this timezone.
-          ${defaults?.timezone ? html` Default: <code>${defaults.timezone}</code>.` : nothing}
+          ${defaults?.timezone
+            ? html` Default: <code>${timezoneSelectLabel(defaults.timezone, offsetOf)}</code>.`
+            : nothing}
         </div>
         <label class="field availability-field-block">
           <span>Agent timezone</span>
@@ -270,15 +336,19 @@ export function renderAgentAvailability(params: {
           >
             <option value="" ?selected=${timezoneValue === ""}>Not set (inherit default)</option>
             <option value="local" ?selected=${timezoneValue === "local"}>
-              Local (host timezone)
+              ${localOptionLabel}
             </option>
             ${showCustomTimezoneOption
               ? html`<option value=${timezoneValue} ?selected=${true}>
-                  ${timezoneValue} (from config)
+                  ${customTzOffset
+                    ? `${timezoneValue} (${customTzOffset}) (from config)`
+                    : `${timezoneValue} (from config)`}
                 </option>`
               : nothing}
             ${ianaZones.map(
-              (z) => html`<option value=${z} ?selected=${z === timezoneValue}>${z}</option>`,
+              (z) => html`<option value=${z} ?selected=${z === timezoneValue}>
+                ${timezoneSelectLabel(z, offsetOf)}
+              </option>`,
             )}
           </select>
         </label>

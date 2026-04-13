@@ -1172,6 +1172,43 @@ export const FIELD_HELP: Record<string, string> = {
   "agents.defaults.humanDelay.mode": 'Delay style for block replies ("off", "natural", "custom").',
   "agents.defaults.humanDelay.minMs": "Minimum delay in ms for custom humanDelay (default: 800).",
   "agents.defaults.humanDelay.maxMs": "Maximum delay in ms for custom humanDelay (default: 2500).",
+  "agents.defaults.availability.timezone":
+    'Agent timezone for scheduling windows (IANA id such as "America/New_York", or "local"). All activeHours and busyWindows are evaluated in this zone.',
+  "agents.defaults.availability.activeHours":
+    "Hours when the agent responds normally. Messages arriving outside this window are deferred (see offlineMode). Omit to respond at any time.",
+  "agents.defaults.availability.activeHours.start":
+    'Active-hours window start time in 24h format (HH:MM), inclusive. Example: "09:00".',
+  "agents.defaults.availability.activeHours.end":
+    'Active-hours window end time in 24h format (HH:MM), exclusive. Use "24:00" for end-of-day. Example: "23:00".',
+  "agents.defaults.availability.activeHours.days":
+    "Days of the week the active-hours window applies to (mon, tue, wed, thu, fri, sat, sun). Omit to apply every day.",
+  "agents.defaults.availability.busyWindows":
+    "Time windows when the agent is busy. Messages received during a busy window are handled after an extra random delay (busyDelay).",
+  "agents.defaults.availability.offlineMode":
+    '"queue" (default): defer reply until the next active window start. "immediate": ignore activeHours and reply right away.',
+  "agents.defaults.availability.busyDelay.minMs":
+    "Minimum extra delay in ms applied when a message arrives during a busy window (default: 60000).",
+  "agents.defaults.availability.busyDelay.maxMs":
+    "Maximum extra delay in ms applied when a message arrives during a busy window (default: 300000).",
+  "agents.defaults.availability.readingSpeed.wpm":
+    "Words per minute the agent takes to read an incoming message before starting to reply (default: 200). Determines a natural pre-reply pause.",
+  "agents.defaults.availability.readingSpeed.minMs":
+    "Minimum reading delay in ms regardless of message length (default: 1000).",
+  "agents.defaults.availability.readingSpeed.maxMs":
+    "Maximum reading delay cap in ms regardless of message length (default: 15000).",
+  "agents.list[].availability.timezone":
+    'Per-agent timezone override for scheduling windows (IANA id or "local").',
+  "agents.list[].availability.activeHours":
+    "Per-agent active-hours window. Overrides agents.defaults.availability.activeHours.",
+  "agents.list[].availability.busyWindows":
+    "Per-agent busy windows. Overrides agents.defaults.availability.busyWindows.",
+  "agents.list[].availability.offlineMode":
+    "Per-agent offline behavior override (queue or immediate).",
+  "agents.list[].availability.busyDelay.minMs": "Per-agent minimum busy window delay in ms.",
+  "agents.list[].availability.busyDelay.maxMs": "Per-agent maximum busy window delay in ms.",
+  "agents.list[].availability.readingSpeed.wpm": "Per-agent reading speed in words per minute.",
+  "agents.list[].availability.readingSpeed.minMs": "Per-agent minimum reading delay in ms.",
+  "agents.list[].availability.readingSpeed.maxMs": "Per-agent maximum reading delay cap in ms.",
   commands:
     "Controls chat command surfaces, owner gating, and elevated command access behavior across providers. Keep defaults unless you need stricter operator controls or broader command availability.",
   "commands.native":

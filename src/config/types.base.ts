@@ -94,6 +94,43 @@ export type HumanDelayConfig = {
   maxMs?: number;
 };
 
+export type AgentTimeWindow = {
+  /** Start time (24h, HH:MM). Inclusive. */
+  start?: string;
+  /** End time (24h, HH:MM). Exclusive. Use "24:00" for end-of-day. */
+  end?: string;
+  /** Days of week this window applies to. Omit for all days. */
+  days?: ("mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun")[];
+};
+
+export type AgentReadingSpeedConfig = {
+  /** Words per minute the agent "reads" incoming messages before replying (default: 200). */
+  wpm?: number;
+  /** Minimum pre-reply reading delay in ms. */
+  minMs?: number;
+  /** Maximum pre-reply reading delay in ms. */
+  maxMs?: number;
+};
+
+export type AgentAvailabilityConfig = {
+  /** Agent's own timezone (IANA id or "local"). All time windows are evaluated in this zone. */
+  timezone?: string;
+  /** Hours when agent responds normally. Outside this window = offline. */
+  activeHours?: AgentTimeWindow;
+  /** Windows when agent is busy and responds with extra delay. */
+  busyWindows?: AgentTimeWindow[];
+  /**
+   * Behavior when a message arrives outside activeHours.
+   * "queue": defer reply until next active window start (default).
+   * "immediate": ignore activeHours and reply right away.
+   */
+  offlineMode?: "queue" | "immediate";
+  /** Extra random delay applied when inside a busy window. */
+  busyDelay?: { minMs?: number; maxMs?: number };
+  /** How fast the agent "reads" an incoming message before starting to reply. */
+  readingSpeed?: AgentReadingSpeedConfig;
+};
+
 export type SessionSendPolicyAction = "allow" | "deny";
 export type SessionSendPolicyMatch = {
   channel?: string;

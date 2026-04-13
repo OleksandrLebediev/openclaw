@@ -503,6 +503,41 @@ export const HumanDelaySchema = z
   })
   .strict();
 
+const DAYS_OF_WEEK = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+
+export const AgentTimeWindowSchema = z
+  .object({
+    start: z.string().optional(),
+    end: z.string().optional(),
+    days: z.array(z.enum(DAYS_OF_WEEK)).optional(),
+  })
+  .strict();
+
+export const AgentReadingSpeedSchema = z
+  .object({
+    wpm: z.number().int().positive().optional(),
+    minMs: z.number().int().nonnegative().optional(),
+    maxMs: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
+export const AgentAvailabilitySchema = z
+  .object({
+    timezone: z.string().optional(),
+    activeHours: AgentTimeWindowSchema.optional(),
+    busyWindows: z.array(AgentTimeWindowSchema).optional(),
+    offlineMode: z.union([z.literal("queue"), z.literal("immediate")]).optional(),
+    busyDelay: z
+      .object({
+        minMs: z.number().int().nonnegative().optional(),
+        maxMs: z.number().int().nonnegative().optional(),
+      })
+      .strict()
+      .optional(),
+    readingSpeed: AgentReadingSpeedSchema.optional(),
+  })
+  .strict();
+
 const CliBackendWatchdogModeSchema = z
   .object({
     noOutputTimeoutMs: z.number().int().min(1000).optional(),

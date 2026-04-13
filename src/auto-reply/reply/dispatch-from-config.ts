@@ -1,6 +1,7 @@
 import { resolveSendableOutboundReplyParts } from "openclaw/plugin-sdk/reply-payload";
 import { isParentOwnedBackgroundAcpSession } from "../../acp/session-interaction-mode.js";
 import { resolveAgentConfig, resolveSessionAgentId } from "../../agents/agent-scope.js";
+import { applyAvailabilityWait } from "../../agents/availability-wait.js";
 import {
   resolveConversationBindingRecord,
   touchConversationBindingRecord,
@@ -258,6 +259,16 @@ export async function dispatchReplyFromConfig(params: {
   const acpDispatchSessionKey = sessionStoreEntry.sessionKey ?? sessionKey;
   const sessionAgentId = resolveSessionAgentId({ sessionKey: acpDispatchSessionKey, config: cfg });
   const sessionAgentCfg = resolveAgentConfig(cfg, sessionAgentId);
+
+  // Apply agent availability rules (active hours, busy windows, reading delay).
+  // The inbound message is already persisted in the session transcript at this point,
+  // so sleeping here never loses a message even if the gateway restarts during the wait.
+  await applyAvailabilityWait({
+    cfg,
+    agentId: sessionAgentId,
+    inboundText: ctx.Body ?? "",
+  });
+
   const shouldEmitVerboseProgress = createShouldEmitVerboseProgress({
     sessionKey: acpDispatchSessionKey,
     storePath: sessionStoreEntry.storePath,

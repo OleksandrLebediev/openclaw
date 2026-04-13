@@ -1175,7 +1175,7 @@ export const FIELD_HELP: Record<string, string> = {
   "agents.defaults.availability.timezone":
     'Agent timezone for scheduling windows (IANA id such as "America/New_York", or "local"). All inactiveHours, activeHours, and busyWindows are evaluated in this zone.',
   "agents.defaults.availability.inactiveHours":
-    "Hours when the agent is offline. When set (with at least one time or day), it replaces activeHours for scheduling. Omit inactiveHours to use activeHours instead.",
+    "When the agent is offline: one time window object or an array of windows (same shape as busyWindows). When any window is set with at least one time or day filter, it replaces activeHours for scheduling. Omit inactiveHours to use activeHours instead.",
   "agents.defaults.availability.inactiveHours.start":
     'Inactive-hours window start time in 24h format (HH:MM), inclusive. Example: "22:00".',
   "agents.defaults.availability.inactiveHours.end":
@@ -1213,7 +1213,7 @@ export const FIELD_HELP: Record<string, string> = {
   "agents.list[].availability.timezone":
     'Per-agent timezone override for scheduling windows (IANA id or "local").',
   "agents.list[].availability.inactiveHours":
-    "Per-agent inactive-hours window. Overrides agents.defaults.availability.inactiveHours.",
+    "Per-agent inactive windows (single object or array). Overrides agents.defaults.availability.inactiveHours.",
   "agents.list[].availability.inactiveHours.start": "Per-agent inactive-hours start (HH:MM).",
   "agents.list[].availability.inactiveHours.end":
     "Per-agent inactive-hours end (HH:MM, exclusive).",

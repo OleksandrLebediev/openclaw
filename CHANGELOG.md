@@ -30,6 +30,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 - Docs: move SSH probe docs to [https://docs.openclaw.ai/help/remote-probes](https://docs.openclaw.ai/help/remote-probes) so they are not mixed into the Vitest testing guide.
 - Dev: availability / persona probe Markdown reports now include run context, per-probe scenarios, timing, and full check outcome lists.
 - Agents/availability: align implicit `readingSpeed` / `writingSpeed` defaults with typical human pacing (reading ~200 wpm with a 2s floor and 30s cap; outbound typing ~40 wpm with a 1.5s floor and 60s cap when individual fields are omitted).
+- Agents/availability: `inactiveHours` accepts a **list of windows** (same shape as `busyWindows`) in addition to the legacy single window; Control UI **Agents → Availability** edits inactive windows as add/remove rows like busy windows.
 
 ### Fixes
 

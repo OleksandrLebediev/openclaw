@@ -4641,35 +4641,61 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       'Agent timezone for scheduling windows (IANA id such as "America/New_York", or "local"). All inactiveHours, activeHours, and busyWindows are evaluated in this zone.',
                   },
                   inactiveHours: {
-                    type: "object",
-                    properties: {
-                      start: {
-                        type: "string",
-                        title: "Inactive Hours Start",
-                        description:
-                          'Inactive-hours window start time in 24h format (HH:MM), inclusive. Example: "22:00".',
+                    anyOf: [
+                      {
+                        type: "object",
+                        properties: {
+                          start: {
+                            type: "string",
+                            title: "Inactive Hours Start",
+                            description:
+                              'Inactive-hours window start time in 24h format (HH:MM), inclusive. Example: "22:00".',
+                          },
+                          end: {
+                            type: "string",
+                            title: "Inactive Hours End",
+                            description:
+                              'Inactive-hours window end time in 24h format (HH:MM), exclusive. Use "24:00" for end-of-day. Example: "08:00".',
+                          },
+                          days: {
+                            type: "array",
+                            items: {
+                              type: "string",
+                              enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                            },
+                            title: "Inactive Days",
+                            description:
+                              "Days of the week the inactive-hours window applies to (mon, tue, wed, thu, fri, sat, sun). Omit to apply every day.",
+                          },
+                        },
+                        additionalProperties: false,
                       },
-                      end: {
-                        type: "string",
-                        title: "Inactive Hours End",
-                        description:
-                          'Inactive-hours window end time in 24h format (HH:MM), exclusive. Use "24:00" for end-of-day. Example: "08:00".',
-                      },
-                      days: {
+                      {
                         type: "array",
                         items: {
-                          type: "string",
-                          enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                          type: "object",
+                          properties: {
+                            start: {
+                              type: "string",
+                            },
+                            end: {
+                              type: "string",
+                            },
+                            days: {
+                              type: "array",
+                              items: {
+                                type: "string",
+                                enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                              },
+                            },
+                          },
+                          additionalProperties: false,
                         },
-                        title: "Inactive Days",
-                        description:
-                          "Days of the week the inactive-hours window applies to (mon, tue, wed, thu, fri, sat, sun). Omit to apply every day.",
                       },
-                    },
-                    additionalProperties: false,
-                    title: "Inactive Hours",
+                    ],
+                    title: "Inactive windows",
                     description:
-                      "Hours when the agent is offline. When set (with at least one time or day), it replaces activeHours for scheduling. Omit inactiveHours to use activeHours instead.",
+                      "When the agent is offline: one time window object or an array of windows (same shape as busyWindows). When any window is set with at least one time or day filter, it replaces activeHours for scheduling. Omit inactiveHours to use activeHours instead.",
                   },
                   activeHours: {
                     type: "object",
@@ -6097,32 +6123,58 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         'Per-agent timezone override for scheduling windows (IANA id or "local").',
                     },
                     inactiveHours: {
-                      type: "object",
-                      properties: {
-                        start: {
-                          type: "string",
-                          title: "Inactive Hours Start",
-                          description: "Per-agent inactive-hours start (HH:MM).",
+                      anyOf: [
+                        {
+                          type: "object",
+                          properties: {
+                            start: {
+                              type: "string",
+                              title: "Inactive Hours Start",
+                              description: "Per-agent inactive-hours start (HH:MM).",
+                            },
+                            end: {
+                              type: "string",
+                              title: "Inactive Hours End",
+                              description: "Per-agent inactive-hours end (HH:MM, exclusive).",
+                            },
+                            days: {
+                              type: "array",
+                              items: {
+                                type: "string",
+                                enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                              },
+                              title: "Inactive Days",
+                              description: "Per-agent inactive-hours days list.",
+                            },
+                          },
+                          additionalProperties: false,
                         },
-                        end: {
-                          type: "string",
-                          title: "Inactive Hours End",
-                          description: "Per-agent inactive-hours end (HH:MM, exclusive).",
-                        },
-                        days: {
+                        {
                           type: "array",
                           items: {
-                            type: "string",
-                            enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                            type: "object",
+                            properties: {
+                              start: {
+                                type: "string",
+                              },
+                              end: {
+                                type: "string",
+                              },
+                              days: {
+                                type: "array",
+                                items: {
+                                  type: "string",
+                                  enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                                },
+                              },
+                            },
+                            additionalProperties: false,
                           },
-                          title: "Inactive Days",
-                          description: "Per-agent inactive-hours days list.",
                         },
-                      },
-                      additionalProperties: false,
-                      title: "Inactive Hours",
+                      ],
+                      title: "Inactive windows",
                       description:
-                        "Per-agent inactive-hours window. Overrides agents.defaults.availability.inactiveHours.",
+                        "Per-agent inactive windows (single object or array). Overrides agents.defaults.availability.inactiveHours.",
                     },
                     activeHours: {
                       type: "object",
@@ -25514,8 +25566,8 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced"],
     },
     "agents.defaults.availability.inactiveHours": {
-      label: "Inactive Hours",
-      help: "Hours when the agent is offline. When set (with at least one time or day), it replaces activeHours for scheduling. Omit inactiveHours to use activeHours instead.",
+      label: "Inactive windows",
+      help: "When the agent is offline: one time window object or an array of windows (same shape as busyWindows). When any window is set with at least one time or day filter, it replaces activeHours for scheduling. Omit inactiveHours to use activeHours instead.",
       tags: ["advanced"],
     },
     "agents.defaults.availability.inactiveHours.start": {
@@ -25625,8 +25677,8 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       tags: ["advanced"],
     },
     "agents.list[].availability.inactiveHours": {
-      label: "Inactive Hours",
-      help: "Per-agent inactive-hours window. Overrides agents.defaults.availability.inactiveHours.",
+      label: "Inactive windows",
+      help: "Per-agent inactive windows (single object or array). Overrides agents.defaults.availability.inactiveHours.",
       tags: ["advanced"],
     },
     "agents.list[].availability.inactiveHours.start": {

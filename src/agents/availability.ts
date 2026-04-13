@@ -154,6 +154,22 @@ export function isInTimeWindow(window: AgentTimeWindow, now: Date, tz: string): 
   return nowMin >= start || nowMin < end;
 }
 
+/**
+ * Normalizes `inactiveHours` to a list of concrete windows.
+ * Supports legacy single `AgentTimeWindow` or an array (same as `busyWindows` entries).
+ */
+export function normalizeInactiveWindows(
+  inactive: AgentAvailabilityConfig["inactiveHours"],
+): AgentTimeWindow[] {
+  if (!inactive) {
+    return [];
+  }
+  if (Array.isArray(inactive)) {
+    return inactive.filter((w) => hasAvailabilityWindow(w));
+  }
+  return hasAvailabilityWindow(inactive) ? [inactive] : [];
+}
+
 /** True when the window constrains schedule (start/end times and/or days of week). */
 export function hasAvailabilityWindow(window?: AgentTimeWindow): boolean {
   if (!window) {

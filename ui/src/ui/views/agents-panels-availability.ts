@@ -257,9 +257,16 @@ export function renderAgentAvailability(params: {
   const patch = (path: string[], value: unknown) => onAvailabilityPatch(agentId, path, value);
   const remove = (path: string[]) => onAvailabilityRemove(agentId, path);
 
-  // Inactive hours (preferred schedule; when set, core ignores activeHours)
-  const inactiveHours: AgentAvailabilityWindow = avail.inactiveHours ?? {};
-  const defaultInactiveHours = defaults?.inactiveHours;
+  // Inactive windows (preferred schedule; legacy single object or list like busyWindows)
+  const inactiveWindows: AgentAvailabilityWindow[] = Array.isArray(avail.inactiveHours)
+    ? [...avail.inactiveHours]
+    : avail.inactiveHours &&
+        (avail.inactiveHours.start?.trim() ||
+          avail.inactiveHours.end?.trim() ||
+          (avail.inactiveHours.days && avail.inactiveHours.days.length))
+      ? [{ ...avail.inactiveHours }]
+      : [];
+  const defaultInactiveRaw = defaults?.inactiveHours;
 
   // Busy windows
   const busyWindows: AgentAvailabilityWindow[] = avail.busyWindows ?? [];
@@ -357,45 +364,83 @@ export function renderAgentAvailability(params: {
         </label>
       </section>
 
-      <!-- Inactive Hours -->
+      <!-- Inactive windows (list) -->
       <section class="card">
-        <div class="card-title">Inactive Hours</div>
+        <div class="card-title">Inactive windows</div>
         <div class="card-sub">
-          Agent does not respond inside this window. Outside it the agent is available (unless you
-          also use legacy <code>activeHours</code> in raw config when this section is empty).
-          ${defaultInactiveHours
-            ? html`
-                Default: <code>${defaultInactiveHours.start ?? "—"}</code> –
-                <code>${defaultInactiveHours.end ?? "—"}</code>.
-              `
+          Agent does not respond inside any of these windows (same shape as busy windows). Outside
+          all of them the agent is available (unless you use legacy <code>activeHours</code> in raw
+          config when this list is empty).
+          ${defaultInactiveRaw
+            ? Array.isArray(defaultInactiveRaw)
+              ? html` Default: <code>${defaultInactiveRaw.length}</code> window(s) in defaults.`
+              : html`
+                  Default: <code>${defaultInactiveRaw.start ?? "—"}</code> –
+                  <code>${defaultInactiveRaw.end ?? "—"}</code>.
+                `
             : nothing}
         </div>
         <div class="availability-field-block">
-          ${renderTimeWindowFields({
-            window: inactiveHours,
-            disabled,
-            onStartChange: (v) => {
-              if (v) {
-                patch(["inactiveHours", "start"], v);
-              } else {
-                remove(["inactiveHours", "start"]);
-              }
-            },
-            onEndChange: (v) => {
-              if (v) {
-                patch(["inactiveHours", "end"], v);
-              } else {
-                remove(["inactiveHours", "end"]);
-              }
-            },
-            onDaysChange: (days) => {
-              if (days.length > 0) {
-                patch(["inactiveHours", "days"], days);
-              } else {
-                remove(["inactiveHours", "days"]);
-              }
-            },
-          })}
+          ${inactiveWindows.length === 0
+            ? html`<div class="empty-hint">No inactive windows configured.</div>`
+            : html`
+                <div class="availability-busy-window-list">
+                  ${inactiveWindows.map(
+                    (w, i) => html`
+                      <div class="availability-busy-window">
+                        <div class="availability-busy-window-header">
+                          <span class="label">Window ${i + 1}</span>
+                          <button
+                            type="button"
+                            class="btn btn--sm btn--ghost danger"
+                            ?disabled=${disabled}
+                            @click=${() => {
+                              const next = inactiveWindows.filter((_, idx) => idx !== i);
+                              if (next.length > 0) {
+                                patch(["inactiveHours"], next);
+                              } else {
+                                remove(["inactiveHours"]);
+                              }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        ${renderTimeWindowFields({
+                          window: w,
+                          disabled,
+                          onStartChange: (v) => {
+                            const next = inactiveWindows.map((iw, idx) =>
+                              idx === i ? { ...iw, start: v || undefined } : iw,
+                            );
+                            patch(["inactiveHours"], next);
+                          },
+                          onEndChange: (v) => {
+                            const next = inactiveWindows.map((iw, idx) =>
+                              idx === i ? { ...iw, end: v || undefined } : iw,
+                            );
+                            patch(["inactiveHours"], next);
+                          },
+                          onDaysChange: (days) => {
+                            const next = inactiveWindows.map((iw, idx) =>
+                              idx === i ? { ...iw, days: days.length > 0 ? days : undefined } : iw,
+                            );
+                            patch(["inactiveHours"], next);
+                          },
+                        })}
+                      </div>
+                    `,
+                  )}
+                </div>
+              `}
+          <button
+            type="button"
+            class="btn btn--sm availability-add-busy-btn"
+            ?disabled=${disabled}
+            @click=${() => patch(["inactiveHours"], [...inactiveWindows, {}])}
+          >
+            + Add inactive window
+          </button>
         </div>
       </section>
 
@@ -403,8 +448,8 @@ export function renderAgentAvailability(params: {
       <section class="card">
         <div class="card-title">Offline Mode</div>
         <div class="card-sub">
-          What happens when a message arrives while the agent is offline (inside inactive hours or
-          outside active hours when inactive hours are not set).
+          What happens when a message arrives while the agent is offline (inside any inactive window
+          or outside active hours when inactive windows are not set).
         </div>
         <label class="field availability-field-block">
           <span>Mode</span>

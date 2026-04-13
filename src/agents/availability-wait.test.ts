@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OpenClawConfig } from "../config/config.js";
 
-const sleepMock = vi.hoisted(() => vi.fn((_ms: number) => Promise.resolve()));
+const sleepMock = vi.hoisted(() =>
+  vi.fn(async (ms: number) => {
+    // Fake `Date` must advance with mocked sleeps so inactive-window loops can exit.
+    await vi.advanceTimersByTimeAsync(ms);
+  }),
+);
 
 vi.mock("../utils.js", () => ({
   sleep: (ms: number) => sleepMock(ms),
@@ -84,6 +89,29 @@ describe("applyAvailabilityWait busy windows", () => {
     expect(sleepMock.mock.calls[0]?.[0]).toBe(10);
     // two words @ 200 wpm = 600ms, above minMs 1000 → 1000ms reading delay
     expect(sleepMock.mock.calls[1]?.[0]).toBe(1000);
+  });
+
+  it("chains sleeps when two inactive windows touch (still offline after first ends)", async () => {
+    // Sunday 2026-06-14 10:15 UTC — first window [10:00,10:30), second [10:30,11:00) on sun only.
+    vi.setSystemTime(new Date("2026-06-14T10:15:00.000Z"));
+    const cfg = makeCfg({
+      timezone: "UTC",
+      inactiveHours: [
+        { start: "10:00", end: "10:30", days: ["sun"] },
+        { start: "10:30", end: "11:00", days: ["sun"] },
+      ],
+      offlineMode: "queue",
+    });
+
+    await applyAvailabilityWait({
+      cfg,
+      agentId: "busy-test-agent",
+      inboundText: "hello",
+    });
+
+    expect(sleepMock).toHaveBeenCalledTimes(2);
+    expect(sleepMock.mock.calls[0]?.[0]).toBe(15 * 60 * 1000);
+    expect(sleepMock.mock.calls[1]?.[0]).toBe(30 * 60 * 1000);
   });
 
   it("sleeps until inactive window ends when inside inactiveHours and offlineMode queue", async () => {

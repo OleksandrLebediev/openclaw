@@ -9,6 +9,7 @@ import {
   isInTimeWindow,
   msUntilLeaveTimeWindow,
   msUntilWindowStart,
+  normalizeInactiveWindows,
   resolveAgentAvailabilityConfig,
   resolveAgentTimezone,
 } from "./availability.js";
@@ -213,6 +214,27 @@ describe("computeBusyDelayMs", () => {
     const ms = computeBusyDelayMs({ minMs: 10_000, maxMs: 20_000 });
     expect(ms).toBeGreaterThanOrEqual(10_000);
     expect(ms).toBeLessThanOrEqual(20_000);
+  });
+});
+
+describe("normalizeInactiveWindows", () => {
+  it("returns empty list for undefined", () => {
+    expect(normalizeInactiveWindows(undefined)).toEqual([]);
+  });
+
+  it("returns empty list for unconstrained single object", () => {
+    expect(normalizeInactiveWindows({})).toEqual([]);
+  });
+
+  it("wraps a single constrained window", () => {
+    const w = { start: "22:00", end: "08:00" };
+    expect(normalizeInactiveWindows(w)).toEqual([w]);
+  });
+
+  it("filters empty entries from an array", () => {
+    expect(
+      normalizeInactiveWindows([{}, { start: "09:00", end: "10:00" }, { days: ["mon"] as const }]),
+    ).toEqual([{ start: "09:00", end: "10:00" }, { days: ["mon"] }]);
   });
 });
 

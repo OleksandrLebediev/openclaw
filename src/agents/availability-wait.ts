@@ -7,6 +7,7 @@ import {
   isInTimeWindow,
   msUntilLeaveTimeWindow,
   msUntilWindowStart,
+  normalizeInactiveWindows,
   resolveAgentAvailabilityConfig,
   resolveAgentTimezone,
 } from "./availability.js";
@@ -25,7 +26,9 @@ export type AvailabilityWaitParams = {
  * Pipeline:
  *   1. If no availability config → no-op.
  *   2. If offlineMode is not "immediate" and a schedule applies:
- *      - When `inactiveHours` is set: sleep until leaving that window if currently inside it.
+ *      - When `inactiveHours` is set (one window or a list): while `now` falls inside any
+ *        listed window, sleep until leaving that window (repeat if the next instant is
+ *        still inside another inactive window).
  *      - Else when `activeHours` is set: sleep until the next active window if currently outside it.
  *   3. If message arrives inside a busy window: sleep for a random busy delay.
  *   4. Apply a reading delay proportional to the message length.
@@ -46,17 +49,22 @@ export async function applyAvailabilityWait(params: AvailabilityWaitParams): Pro
 
   // --- Step 1: offline (inactive hours or outside active hours) ---
   if (availability.offlineMode !== "immediate") {
-    if (hasAvailabilityWindow(availability.inactiveHours)) {
-      const inactive = availability.inactiveHours!;
-      if (isInTimeWindow(inactive, now, tz)) {
-        const waitMs = msUntilLeaveTimeWindow(inactive, now, tz);
-        if (waitMs > 0) {
-          log?.(
-            `[availability] agent offline — waiting ${Math.round(waitMs / 1000)}s until inactive hours end`,
-          );
-          await sleep(waitMs);
-          now = new Date();
+    const inactiveWindows = normalizeInactiveWindows(availability.inactiveHours);
+    if (inactiveWindows.length > 0) {
+      for (let guard = 0; guard < 64; guard++) {
+        now = new Date();
+        const inactive = inactiveWindows.find((w) => isInTimeWindow(w, now, tz));
+        if (!inactive) {
+          break;
         }
+        const waitMs = msUntilLeaveTimeWindow(inactive, now, tz);
+        if (waitMs <= 0) {
+          break;
+        }
+        log?.(
+          `[availability] agent offline — waiting ${Math.round(waitMs / 1000)}s until inactive hours end`,
+        );
+        await sleep(waitMs);
       }
     } else if (hasAvailabilityWindow(availability.activeHours)) {
       const active = availability.activeHours!;

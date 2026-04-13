@@ -116,16 +116,17 @@ export type AgentAvailabilityConfig = {
   /** Agent's own timezone (IANA id or "local"). All time windows are evaluated in this zone. */
   timezone?: string;
   /**
-   * Hours when the agent does not respond (offline). When set (with at least one of
-   * `start` / `end` / `days`), it takes precedence over `activeHours`.
+   * When the agent does not respond (offline). A single window or a list of windows
+   * (same shape as `busyWindows` entries). When any window is set with at least one of
+   * `start` / `end` / `days`, scheduling uses this list and ignores `activeHours`.
    */
-  inactiveHours?: AgentTimeWindow;
+  inactiveHours?: AgentTimeWindow | AgentTimeWindow[];
   /** Hours when agent responds normally. Outside this window = offline. Ignored when `inactiveHours` is set. */
   activeHours?: AgentTimeWindow;
   /** Windows when agent is busy and responds with extra delay. */
   busyWindows?: AgentTimeWindow[];
   /**
-   * Behavior when a message arrives while the agent is offline (outside `activeHours` or inside `inactiveHours`).
+   * Behavior when a message arrives while the agent is offline (outside `activeHours` or inside any `inactiveHours` window).
    * "queue": defer reply until the agent is available again (default).
    * "immediate": ignore the schedule and reply right away.
    */

@@ -1269,12 +1269,15 @@ Optional **agent-side** reply timing: inactive or active hours, busy windows, a 
     defaults: {
       availability: {
         timezone: "America/New_York",
-        // Preferred: when set (with times and/or days), the agent is offline INSIDE this window.
-        inactiveHours: {
-          start: "22:00",
-          end: "08:00",
-          days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-        },
+        // Preferred: offline inside any of these windows (single object or array, same shape as busyWindows).
+        inactiveHours: [
+          {
+            start: "22:00",
+            end: "08:00",
+            days: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+          },
+          { start: "12:00", end: "13:00", days: ["mon", "tue", "wed", "thu", "fri"] },
+        ],
         busyWindows: [{ start: "13:00", end: "16:00", days: ["mon", "tue", "wed", "thu", "fri"] }],
         offlineMode: "queue", // queue | immediate (omit or queue = wait until available)
         busyDelay: { minMs: 60_000, maxMs: 300_000 },
@@ -1287,9 +1290,9 @@ Optional **agent-side** reply timing: inactive or active hours, busy windows, a 
 }
 ```
 
-- `inactiveHours` (preferred): same shape as `activeHours`. When `inactiveHours` is set with at least one time or day filter, the agent queues or skips waits based on **being inside this window** (offline). `inactiveHours` takes precedence over `activeHours`.
+- `inactiveHours` (preferred): one window object **or** an array of windows (same fields as each `busyWindows[]` entry). When at least one window has a time or day filter, the agent is offline **inside any** of them; `offlineMode: "queue"` sleeps until `now` is outside **all** inactive windows. `inactiveHours` takes precedence over `activeHours`.
 - `activeHours` (legacy): hours when the agent responds normally; ignored when `inactiveHours` is set.
-- `inactiveHours` / `activeHours` / `busyWindows[].` `start` / `end`: `HH:MM` (24h); `end` is exclusive; use `"24:00"` for end of day. `days`: optional subset of `mon` … `sun`; omit `days` for all days.
+- `inactiveHours` / `activeHours` / `busyWindows[]` / each inactive window: `start` / `end`: `HH:MM` (24h); `end` is exclusive; use `"24:00"` for end of day. `days`: optional subset of `mon` … `sun`; omit `days` for all days.
 - `offlineMode`: `"queue"` (default) waits until the agent is available again; `"immediate"` ignores inactive/active hours for starting the reply.
 - `busyDelay`: extra random delay (ms) while inside any matching `busyWindows` entry.
 - `readingSpeed`: delay from inbound text length (`wpm`), clamped by `minMs` / `maxMs`.

@@ -1,55 +1,99 @@
 // Availability probe cases: wall-clock checks against `openclaw agent` on a remote host.
 //
-// For `derivedFromReadingSpeed`, keep the same numbers as
-// `agents.defaults.availability.readingSpeed` / per-agent override on the server,
-// otherwise duration vs. reading-delay checks will not reflect reality.
+// Reading cases are generated per named preset (`presets.ts`). Use `--preset <id>` so the
+// probe only runs cases that match the gateway’s `agents.*.availability.readingSpeed`.
+//
+// Optional `--reading-speed '<json>'` merges on top of each case’s expected readingSpeed
+// (useful when the server differs slightly from a preset without editing this file).
 import { computeReadingDelayMs } from "../../../src/agents/availability.js";
 import type { Check, ProbeCase } from "../persona-probe/types.js";
-import type { AvailabilityCase } from "./types.js";
+import { AVAILABILITY_READING_PRESETS } from "./presets.js";
+import type { AvailabilityCase, ReadingSpeedExpect } from "./types.js";
 
-export const AVAILABILITY_CASES: AvailabilityCase[] = [
+const READING_MESSAGES = [
   {
-    id: "reading-one-word",
-    group: "reading",
-    description:
-      "Single-word message — reading delay hits minMs at default wpm (match server readingSpeed).",
+    idSuffix: "one-word",
     message: "Hi",
-    derivedFromReadingSpeed: { wpm: 200, minMs: 1000, maxMs: 15_000 },
-    slackMs: 3500,
-    modelHeadroomMs: 120_000,
-    durationSeverity: "warn",
+    blurb:
+      "Single-word message — reading delay hits minMs at this wpm (match server readingSpeed).",
   },
   {
-    id: "reading-ten-words",
-    group: "reading",
-    description:
-      "Ten words — delay scales with word count at 200 wpm (adjust if server wpm differs).",
+    idSuffix: "ten-words",
     message: "one two three four five six seven eight nine ten",
-    derivedFromReadingSpeed: { wpm: 200, minMs: 1000, maxMs: 15_000 },
-    slackMs: 3500,
-    modelHeadroomMs: 120_000,
-    durationSeverity: "warn",
+    blurb: "Ten words — delay scales with word count (match server wpm/min/max).",
   },
-  {
-    id: "sanity-not-hung",
-    group: "sanity",
-    description: "Full round-trip completes within 5 minutes (fail if gateway/agent stuck).",
-    message: "ping",
-    maxDurationMs: 300_000,
-    durationSeverity: "fail",
-  },
-  {
-    id: "offline-queue-waits-hours",
-    group: "offline",
-    description:
-      "Outside activeHours with offlineMode queue — would sleep until next window (not run in CI).",
-    message: "Should not run automatically",
-    skip: true,
-    minDurationMs: 0,
-  },
-];
+] as const;
 
-function availabilityCaseToProbeCase(c: AvailabilityCase): ProbeCase {
+function buildReadingCases(): AvailabilityCase[] {
+  const out: AvailabilityCase[] = [];
+  for (const p of AVAILABILITY_READING_PRESETS) {
+    for (const m of READING_MESSAGES) {
+      const id =
+        p.id === "default"
+          ? m.idSuffix === "one-word"
+            ? "reading-one-word"
+            : "reading-ten-words"
+          : `read-${p.id}-${m.idSuffix}`;
+
+      out.push({
+        id,
+        group: "reading",
+        preset: p.id,
+        tags: ["reading", `preset:${p.id}`],
+        description: `${m.blurb} [preset: ${p.id}]`,
+        message: m.message,
+        derivedFromReadingSpeed: { ...p.readingSpeed },
+        slackMs: p.slackMs,
+        modelHeadroomMs: 120_000,
+        durationSeverity: "warn",
+      });
+    }
+  }
+  return out;
+}
+
+function buildAvailabilityCases(): AvailabilityCase[] {
+  return [
+    ...buildReadingCases(),
+    {
+      id: "sanity-not-hung",
+      group: "sanity",
+      description: "Full round-trip completes within 5 minutes (fail if gateway/agent stuck).",
+      message: "ping",
+      tags: ["sanity"],
+      maxDurationMs: 300_000,
+      durationSeverity: "fail",
+    },
+    {
+      id: "offline-queue-waits-hours",
+      group: "offline",
+      description:
+        "Outside activeHours with offlineMode queue — would sleep until next window (not run in CI).",
+      message: "Should not run automatically",
+      skip: true,
+      tags: ["offline"],
+      minDurationMs: 0,
+    },
+  ];
+}
+
+/** All cases (including `skip: true` placeholders). */
+export const AVAILABILITY_CASES: AvailabilityCase[] = buildAvailabilityCases();
+
+function mergeReading(
+  base?: ReadingSpeedExpect,
+  over?: ReadingSpeedExpect,
+): ReadingSpeedExpect | undefined {
+  if (!base && !over) {
+    return undefined;
+  }
+  return { ...base, ...over };
+}
+
+function availabilityCaseToProbeCase(
+  c: AvailabilityCase,
+  mergeReadingSpeed?: ReadingSpeedExpect,
+): ProbeCase {
   const checks: Check[] = [
     {
       kind: "custom",
@@ -64,8 +108,10 @@ function availabilityCaseToProbeCase(c: AvailabilityCase): ProbeCase {
   const modelHeadroom = c.modelHeadroomMs ?? 180_000;
   const sev = c.durationSeverity ?? "warn";
 
-  if (c.derivedFromReadingSpeed) {
-    const expectedReadMs = computeReadingDelayMs(c.message, c.derivedFromReadingSpeed);
+  const derivedCfg = mergeReading(c.derivedFromReadingSpeed, mergeReadingSpeed);
+
+  if (derivedCfg) {
+    const expectedReadMs = computeReadingDelayMs(c.message, derivedCfg);
     const floor = Math.max(0, expectedReadMs - slack);
     const ceiling = expectedReadMs + modelHeadroom;
     checks.push({
@@ -114,6 +160,8 @@ function availabilityCaseToProbeCase(c: AvailabilityCase): ProbeCase {
 }
 
 /** Convert availability cases to persona-probe `ProbeCase` for shared `evaluateProbe`. */
-export function availabilityCasesToProbeCases(): ProbeCase[] {
-  return AVAILABILITY_CASES.filter((c) => !c.skip).map(availabilityCaseToProbeCase);
+export function availabilityCasesToProbeCases(mergeReadingSpeed?: ReadingSpeedExpect): ProbeCase[] {
+  return AVAILABILITY_CASES.filter((c) => !c.skip).map((c) =>
+    availabilityCaseToProbeCase(c, mergeReadingSpeed),
+  );
 }

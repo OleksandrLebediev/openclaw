@@ -2,6 +2,8 @@
 /**
  * persona-probe — eval harness for human-persona agents on a remote gateway.
  *
+ * Docs: `docs/help/remote-probes.md` (published as /help/remote-probes — not the Vitest testing guide).
+ *
  * Usage:
  *   bun scripts/dev/persona-probe.ts [options]
  *

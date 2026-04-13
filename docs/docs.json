@@ -1572,6 +1572,7 @@
                   "help/environment",
                   "help/debugging",
                   "help/testing",
+                  "help/remote-probes",
                   "help/scripts",
                   "debug/node-issue",
                   "diagnostics/flags"

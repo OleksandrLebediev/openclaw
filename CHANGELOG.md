@@ -21,6 +21,8 @@ Docs: https://docs.openclaw.ai
 - Agents/persona: add `agents.defaults.personaMode` config option (`"agent"` or `"human"`); when set to `"human"`, `HUMAN.md` is loaded instead of `AGENTS.md` so workspaces can deploy a digital-human persona with its own operational instructions.
 - Agents: add optional `agents.defaults.availability` and `agents.list[].availability` for agent-side scheduling (timezone, active hours, busy windows, offline queue vs immediate replies, busy delay, reading-speed delay before replies). Control UI adds an **Agents → Availability** tab (documented in the Gateway configuration reference).
 - Dev: add `pnpm availability:probe` (`scripts/dev/availability-probe.ts`) to smoke-test reading-delay wall time on a remote host via SSH, reusing persona-probe capture and shared report output.
+- Dev: extend `availability:probe` with named **`--preset`** reading-speed bundles, **`--list-presets`**, and **`--reading-speed`** JSON merge so one host config can be exercised without editing `cases.ts`.
+- Docs: move SSH probe docs to https://docs.openclaw.ai/help/remote-probes so they are not mixed into the Vitest testing guide.
 
 ### Fixes
 

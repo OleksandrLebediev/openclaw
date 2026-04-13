@@ -17,6 +17,11 @@ export type AvailabilityCase = {
   message: string;
   skip?: boolean;
   tags?: string[];
+  /**
+   * Reading-delay cases are tied to a named preset (see `presets.ts`).
+   * Cases without `preset` (for example sanity) are not filtered by `--preset`.
+   */
+  preset?: string;
 
   /**
    * When set, expects `durationMs >= computeReadingDelayMs(message, cfg) - slackMs`
@@ -44,6 +49,13 @@ export type AvailabilityProbeOptions = {
   outputDir: string;
   tags: string[];
   group: string | null;
+  /**
+   * Which reading preset to run (`default` matches typical server config).
+   * Use `all` to run every preset’s reading cases (server must match each block, or expect noise).
+   */
+  preset: string;
+  /** Merged over each case’s `derivedFromReadingSpeed` for evaluation (CLI wins per field). */
+  readingSpeedMerge: ReadingSpeedExpect | null;
   noBaseline: boolean;
   writeJson: boolean;
 };

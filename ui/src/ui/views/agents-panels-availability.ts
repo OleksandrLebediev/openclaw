@@ -147,8 +147,7 @@ export function renderAgentAvailability(params: {
 
   return html`
     <div class="availability-panel">
-      <!-- Header actions -->
-      <div class="panel-actions-row">
+      <div class="availability-panel-actions panel-actions-row">
         ${configDirty
           ? html`<div class="callout warn">You have unsaved config changes.</div>`
           : nothing}
@@ -179,7 +178,7 @@ export function renderAgentAvailability(params: {
           All scheduling windows are evaluated in this timezone.
           ${defaults?.timezone ? html` Default: <code>${defaults.timezone}</code>.` : nothing}
         </div>
-        <label class="field" style="margin-top:12px">
+        <label class="field availability-field-block">
           <span>Agent timezone</span>
           <input
             type="text"
@@ -212,7 +211,7 @@ export function renderAgentAvailability(params: {
               `
             : nothing}
         </div>
-        <div style="margin-top:12px">
+        <div class="availability-field-block">
           ${renderTimeWindowFields({
             window: activeHours,
             disabled,
@@ -245,7 +244,7 @@ export function renderAgentAvailability(params: {
       <section class="card">
         <div class="card-title">Offline Mode</div>
         <div class="card-sub">What happens when a message arrives outside active hours.</div>
-        <label class="field" style="margin-top:12px">
+        <label class="field availability-field-block">
           <span>Mode</span>
           <select
             .value=${avail.offlineMode ?? "queue"}
@@ -271,60 +270,63 @@ export function renderAgentAvailability(params: {
         <div class="card-sub">
           Extra random delay is added for messages that arrive during these windows.
         </div>
-        <div style="margin-top:12px">
+        <div class="availability-field-block">
           ${busyWindows.length === 0
             ? html`<div class="empty-hint">No busy windows configured.</div>`
-            : busyWindows.map(
-                (w, i) => html`
-                  <div class="availability-busy-window">
-                    <div class="availability-busy-window-header">
-                      <span class="label">Window ${i + 1}</span>
-                      <button
-                        type="button"
-                        class="btn btn--sm btn--ghost danger"
-                        ?disabled=${disabled}
-                        @click=${() => {
-                          const next = busyWindows.filter((_, idx) => idx !== i);
-                          if (next.length > 0) {
+            : html`
+                <div class="availability-busy-window-list">
+                  ${busyWindows.map(
+                    (w, i) => html`
+                      <div class="availability-busy-window">
+                        <div class="availability-busy-window-header">
+                          <span class="label">Window ${i + 1}</span>
+                          <button
+                            type="button"
+                            class="btn btn--sm btn--ghost danger"
+                            ?disabled=${disabled}
+                            @click=${() => {
+                              const next = busyWindows.filter((_, idx) => idx !== i);
+                              if (next.length > 0) {
+                                patch(["busyWindows"], next);
+                              } else {
+                                remove(["busyWindows"]);
+                              }
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        ${renderTimeWindowFields({
+                          window: w,
+                          disabled,
+                          onStartChange: (v) => {
+                            const next = busyWindows.map((bw, idx) =>
+                              idx === i ? { ...bw, start: v || undefined } : bw,
+                            );
                             patch(["busyWindows"], next);
-                          } else {
-                            remove(["busyWindows"]);
-                          }
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    ${renderTimeWindowFields({
-                      window: w,
-                      disabled,
-                      onStartChange: (v) => {
-                        const next = busyWindows.map((bw, idx) =>
-                          idx === i ? { ...bw, start: v || undefined } : bw,
-                        );
-                        patch(["busyWindows"], next);
-                      },
-                      onEndChange: (v) => {
-                        const next = busyWindows.map((bw, idx) =>
-                          idx === i ? { ...bw, end: v || undefined } : bw,
-                        );
-                        patch(["busyWindows"], next);
-                      },
-                      onDaysChange: (days) => {
-                        const next = busyWindows.map((bw, idx) =>
-                          idx === i ? { ...bw, days: days.length > 0 ? days : undefined } : bw,
-                        );
-                        patch(["busyWindows"], next);
-                      },
-                    })}
-                  </div>
-                `,
-              )}
+                          },
+                          onEndChange: (v) => {
+                            const next = busyWindows.map((bw, idx) =>
+                              idx === i ? { ...bw, end: v || undefined } : bw,
+                            );
+                            patch(["busyWindows"], next);
+                          },
+                          onDaysChange: (days) => {
+                            const next = busyWindows.map((bw, idx) =>
+                              idx === i ? { ...bw, days: days.length > 0 ? days : undefined } : bw,
+                            );
+                            patch(["busyWindows"], next);
+                          },
+                        })}
+                      </div>
+                    `,
+                  )}
+                </div>
+              `}
           <button
             type="button"
-            class="btn btn--sm"
+            class="btn btn--sm availability-add-busy-btn"
             ?disabled=${disabled}
-            style="margin-top:8px"
             @click=${() => patch(["busyWindows"], [...busyWindows, {}])}
           >
             + Add busy window
@@ -338,7 +340,7 @@ export function renderAgentAvailability(params: {
         <div class="card-sub">
           Random extra wait applied when a message arrives during a busy window (in minutes).
         </div>
-        <div class="availability-row" style="margin-top:12px">
+        <div class="availability-row availability-field-block">
           <label class="field field--inline">
             <span>Min delay (min)</span>
             <input
@@ -389,7 +391,7 @@ export function renderAgentAvailability(params: {
           How fast the agent "reads" an incoming message before starting to reply. The delay is
           computed from word count and reading speed, then clamped to min/max.
         </div>
-        <div class="availability-row" style="margin-top:12px">
+        <div class="availability-row availability-field-block">
           <label class="field field--inline">
             <span>Reading speed (wpm)</span>
             <input

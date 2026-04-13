@@ -3223,6 +3223,93 @@ td.data-table-key-col {
   opacity: 0.8;
 }
 
+/* Agents — Availability */
+.availability-panel {
+  display: grid;
+  gap: 20px;
+}
+
+.availability-panel-actions.panel-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.availability-panel-actions .panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.availability-field-block {
+  margin-top: 12px;
+}
+
+.availability-window-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+}
+
+.availability-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.availability-day-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.availability-days-hint {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.availability-busy-window-list {
+  display: grid;
+  gap: 14px;
+}
+
+.availability-busy-window {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-accent);
+}
+
+.availability-busy-window-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.availability-add-busy-btn {
+  margin-top: 10px;
+}
+
+.availability-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: flex-end;
+}
+
 .agents-overview-grid {
   display: grid;
   gap: 12px;

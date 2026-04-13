@@ -117,6 +117,8 @@ function createProps(overrides: Partial<AgentsProps> = {}): AgentsProps {
     onAgentSkillsClear: () => undefined,
     onAgentSkillsDisableAll: () => undefined,
     onSetDefault: () => undefined,
+    onAvailabilityPatch: () => undefined,
+    onAvailabilityRemove: () => undefined,
     ...overrides,
   };
 }
@@ -178,5 +180,41 @@ describe("renderAgents", () => {
     );
 
     expect(skillsTab?.textContent?.trim()).toContain("1");
+  });
+
+  it("renders the Availability tab", async () => {
+    const container = document.createElement("div");
+    render(renderAgents(createProps()), container);
+    await Promise.resolve();
+
+    const availabilityTab = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".agent-tab"),
+    ).find((button) => button.textContent?.includes("Availability"));
+
+    expect(availabilityTab?.textContent?.trim()).toBe("Availability");
+  });
+
+  it("shows the Availability panel when selected", async () => {
+    const container = document.createElement("div");
+    render(
+      renderAgents(
+        createProps({
+          activePanel: "availability",
+          config: {
+            form: { agents: { list: [{ id: "beta", availability: { timezone: "UTC" } }] } },
+            loading: false,
+            saving: false,
+            dirty: false,
+          },
+        }),
+      ),
+      container,
+    );
+    await Promise.resolve();
+
+    expect(container.textContent).toContain("Timezone");
+    expect(container.textContent).toContain("Active Hours");
+    const tzInput = container.querySelector<HTMLInputElement>('input[placeholder*="Europe/Kyiv"]');
+    expect(tzInput?.value).toBe("UTC");
   });
 });

@@ -1254,6 +1254,39 @@ See [Session Pruning](/concepts/session-pruning) for behavior details.
 
 See [Streaming](/concepts/streaming) for behavior + chunking details.
 
+<a id="agentsdefaultsavailability"></a>
+
+### `agents.defaults.availability` (optional)
+
+Optional **agent-side** reply timing: active hours, busy windows, and a simulated reading delay before the model run starts. All time windows are evaluated in `availability.timezone` (IANA ID or `"local"`). Omit the whole object to disable.
+
+- **Per-agent:** set `agents.list[].availability` on the matching agent entry. Top-level fields (`timezone`, `activeHours`, `busyWindows`, `offlineMode`) use the per-agent value when set, otherwise the default. Nested `busyDelay` and `readingSpeed` merge key-by-key with defaults (`minMs` / `maxMs`, `wpm` / `minMs` / `maxMs`).
+- **Inbound messages** are written to the session transcript before these waits; if you use `offlineMode: "queue"`, the gateway defers starting the reply until the next active window. A restart during an in-memory wait drops only the wait timer, not the stored message.
+
+```json5
+{
+  agents: {
+    defaults: {
+      availability: {
+        timezone: "America/New_York",
+        activeHours: { start: "09:00", end: "18:00", days: ["mon", "tue", "wed", "thu", "fri"] },
+        busyWindows: [{ start: "13:00", end: "16:00", days: ["mon", "tue", "wed", "thu", "fri"] }],
+        offlineMode: "queue", // queue | immediate (omit or queue = wait for next active window)
+        busyDelay: { minMs: 60_000, maxMs: 300_000 },
+        readingSpeed: { wpm: 200, minMs: 1000, maxMs: 15_000 },
+      },
+    },
+  },
+}
+```
+
+- `activeHours` / `busyWindows[].` `start` / `end`: `HH:MM` (24h); `end` is exclusive; use `"24:00"` for end of day. `days`: optional subset of `mon` … `sun`; omit `days` for all days.
+- `offlineMode`: `"queue"` (default) waits until the next `activeHours` window; `"immediate"` ignores active hours for starting the reply.
+- `busyDelay`: extra random delay (ms) while inside any matching `busyWindows` entry.
+- `readingSpeed`: delay from inbound text length (`wpm`), clamped by `minMs` / `maxMs`.
+
+See [Control UI](/web/control-ui) for the **Agents → Availability** form editor.
+
 ### Typing indicators
 
 ```json5

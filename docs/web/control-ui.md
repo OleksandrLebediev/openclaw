@@ -92,6 +92,7 @@ locale picker lives in the Gateway Access card, not under Appearance.
 - Dreams: dreaming status, enable/disable toggle, and Dream Diary reader (`doctor.memory.status`, `doctor.memory.dreamDiary`, `config.patch`)
 - Cron jobs: list/add/edit/run/enable/disable + run history (`cron.*`)
 - Skills: status, enable/disable, install, API key updates (`skills.*`)
+- Agents: per-agent workspace files, tools, skills, channel context, cron jobs, model selection; **Availability** tab edits optional `agents.list[].availability` (and shows defaults from `agents.defaults.availability`) for timezone, active hours, busy windows, offline queue vs immediate replies, and reading-speed delay — see [Configuration reference](/gateway/configuration-reference#agentsdefaultsavailability)
 - Nodes: list + caps (`node.list`)
 - Exec approvals: edit gateway or node allowlists + ask policy for `exec host=gateway/node` (`exec.approvals.*`)
 - Config: view/edit `~/.openclaw/openclaw.json` (`config.get`, `config.set`)

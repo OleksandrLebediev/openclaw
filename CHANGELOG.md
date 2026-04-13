@@ -19,6 +19,7 @@ Docs: https://docs.openclaw.ai
 - Providers/Ollama: detect vision capability from the `/api/show` response and set image input on models that support it so Ollama vision models accept image attachments. (#62193) Thanks @BruceMacD.
 - Agents: add the `openclaw-claw-server-deploy` maintainer skill for pulling, building, and restarting OpenClaw on a remote `claw` SSH gateway host.
 - Agents/persona: add `agents.defaults.personaMode` config option (`"agent"` or `"human"`); when set to `"human"`, `HUMAN.md` is loaded instead of `AGENTS.md` so workspaces can deploy a digital-human persona with its own operational instructions.
+- Agents: add optional `agents.defaults.availability` and `agents.list[].availability` for agent-side scheduling (timezone, active hours, busy windows, offline queue vs immediate replies, busy delay, reading-speed delay before replies). Control UI adds an **Agents → Availability** tab (documented in the Gateway configuration reference).
 
 ### Fixes
 

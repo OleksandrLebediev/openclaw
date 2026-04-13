@@ -180,7 +180,7 @@ export type AppViewState = {
   toolsEffectiveResultKey: string | null;
   toolsEffectiveError: string | null;
   toolsEffectiveResult: import("./types.js").ToolsEffectiveResult | null;
-  agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron";
+  agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" | "availability";
   agentFilesLoading: boolean;
   agentFilesError: string | null;
   agentFilesList: AgentsFilesListResult | null;

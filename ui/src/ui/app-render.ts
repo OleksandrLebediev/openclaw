@@ -1428,6 +1428,24 @@ export function renderApp(state: AppViewState) {
                   }
                   updateConfigFormValue(state, ["agents", "defaultId"], agentId);
                 },
+                onAvailabilityPatch: (agentId, path, value) => {
+                  const index = ensureAgentIndex(agentId);
+                  if (index < 0) {
+                    return;
+                  }
+                  updateConfigFormValue(
+                    state,
+                    ["agents", "list", index, "availability", ...path],
+                    value,
+                  );
+                },
+                onAvailabilityRemove: (agentId, path) => {
+                  const index = findAgentIndex(agentId);
+                  if (index < 0) {
+                    return;
+                  }
+                  removeConfigFormValue(state, ["agents", "list", index, "availability", ...path]);
+                },
               }),
             )
           : nothing}

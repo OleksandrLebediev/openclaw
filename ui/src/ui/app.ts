@@ -283,7 +283,14 @@ export class OpenClawApp extends LitElement {
   @state() toolsEffectiveResultKey: string | null = null;
   @state() toolsEffectiveError: string | null = null;
   @state() toolsEffectiveResult: ToolsEffectiveResult | null = null;
-  @state() agentsPanel: "overview" | "files" | "tools" | "skills" | "channels" | "cron" = "files";
+  @state() agentsPanel:
+    | "overview"
+    | "files"
+    | "tools"
+    | "skills"
+    | "channels"
+    | "cron"
+    | "availability" = "files";
   @state() agentFilesLoading = false;
   @state() agentFilesError: string | null = null;
   @state() agentFilesList: AgentsFilesListResult | null = null;

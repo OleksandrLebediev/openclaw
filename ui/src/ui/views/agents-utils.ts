@@ -159,6 +159,21 @@ type ToolPolicy = {
   deny?: string[];
 };
 
+export type AgentAvailabilityWindow = {
+  start?: string;
+  end?: string;
+  days?: ("mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun")[];
+};
+
+export type AgentAvailabilityConfig = {
+  timezone?: string;
+  activeHours?: AgentAvailabilityWindow;
+  busyWindows?: AgentAvailabilityWindow[];
+  offlineMode?: "queue" | "immediate";
+  busyDelay?: { minMs?: number; maxMs?: number };
+  readingSpeed?: { wpm?: number; minMs?: number; maxMs?: number };
+};
+
 type AgentConfigEntry = {
   id: string;
   name?: string;
@@ -172,11 +187,17 @@ type AgentConfigEntry = {
     alsoAllow?: string[];
     deny?: string[];
   };
+  availability?: AgentAvailabilityConfig;
 };
 
 type ConfigSnapshot = {
   agents?: {
-    defaults?: { workspace?: string; model?: unknown; models?: Record<string, { alias?: string }> };
+    defaults?: {
+      workspace?: string;
+      model?: unknown;
+      models?: Record<string, { alias?: string }>;
+      availability?: AgentAvailabilityConfig;
+    };
     list?: AgentConfigEntry[];
   };
   tools?: {

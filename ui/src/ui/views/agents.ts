@@ -12,6 +12,7 @@ import type {
   ToolsCatalogResult,
   ToolsEffectiveResult,
 } from "../types.ts";
+import { renderAgentAvailability } from "./agents-panels-availability.ts";
 import { renderAgentOverview } from "./agents-panels-overview.ts";
 import {
   renderAgentFiles,
@@ -21,7 +22,14 @@ import {
 import { renderAgentTools, renderAgentSkills } from "./agents-panels-tools-skills.ts";
 import { agentBadgeText, buildAgentContext, normalizeAgentLabel } from "./agents-utils.ts";
 
-export type AgentsPanel = "overview" | "files" | "tools" | "skills" | "channels" | "cron";
+export type AgentsPanel =
+  | "overview"
+  | "files"
+  | "tools"
+  | "skills"
+  | "channels"
+  | "cron"
+  | "availability";
 
 export type ConfigState = {
   form: Record<string, unknown> | null;
@@ -117,6 +125,8 @@ export type AgentsProps = {
   onAgentSkillsClear: (agentId: string) => void;
   onAgentSkillsDisableAll: (agentId: string) => void;
   onSetDefault: (agentId: string) => void;
+  onAvailabilityPatch: (agentId: string, path: string[], value: unknown) => void;
+  onAvailabilityRemove: (agentId: string, path: string[]) => void;
 };
 
 export function renderAgents(props: AgentsProps) {
@@ -336,6 +346,19 @@ export function renderAgents(props: AgentsProps) {
                     onSelectPanel: props.onSelectPanel,
                   })
                 : nothing}
+              ${props.activePanel === "availability"
+                ? renderAgentAvailability({
+                    agentId: selectedAgent.id,
+                    configForm: props.config.form,
+                    configLoading: props.config.loading,
+                    configSaving: props.config.saving,
+                    configDirty: props.config.dirty,
+                    onConfigReload: props.onConfigReload,
+                    onConfigSave: props.onConfigSave,
+                    onAvailabilityPatch: props.onAvailabilityPatch,
+                    onAvailabilityRemove: props.onAvailabilityRemove,
+                  })
+                : nothing}
             `}
       </section>
     </div>
@@ -354,6 +377,7 @@ function renderAgentTabs(
     { id: "skills", label: "Skills" },
     { id: "channels", label: "Channels" },
     { id: "cron", label: "Cron Jobs" },
+    { id: "availability", label: "Availability" },
   ];
   return html`
     <div class="agent-tabs">

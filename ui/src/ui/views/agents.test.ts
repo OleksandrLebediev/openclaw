@@ -214,7 +214,9 @@ describe("renderAgents", () => {
 
     expect(container.textContent).toContain("Timezone");
     expect(container.textContent).toContain("Active Hours");
-    const tzInput = container.querySelector<HTMLInputElement>('input[placeholder*="Europe/Kyiv"]');
-    expect(tzInput?.value).toBe("UTC");
+    const tzSelect = container.querySelector<HTMLSelectElement>(
+      '[data-testid="availability-timezone"]',
+    );
+    expect(tzSelect?.value).toBe("UTC");
   });
 });

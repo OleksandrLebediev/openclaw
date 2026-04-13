@@ -3310,6 +3310,11 @@ td.data-table-key-col {
   align-items: flex-end;
 }
 
+.availability-panel .availability-timezone-select {
+  width: 100%;
+  max-width: 100%;
+}
+
 .agents-overview-grid {
   display: grid;
   gap: 12px;

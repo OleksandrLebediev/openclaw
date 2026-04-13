@@ -15,6 +15,75 @@ const DAY_LABELS: Record<DayOfWeek, string> = {
   sun: "Sun",
 };
 
+/** Used when `Intl.supportedValuesOf("timeZone")` is unavailable (older runtimes). */
+const FALLBACK_IANA_TIMEZONES = [
+  "Africa/Cairo",
+  "Africa/Johannesburg",
+  "America/Anchorage",
+  "America/Argentina/Buenos_Aires",
+  "America/Bogota",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Mexico_City",
+  "America/New_York",
+  "America/Phoenix",
+  "America/Sao_Paulo",
+  "America/Toronto",
+  "America/Vancouver",
+  "Asia/Bangkok",
+  "Asia/Dubai",
+  "Asia/Hong_Kong",
+  "Asia/Jerusalem",
+  "Asia/Kolkata",
+  "Asia/Seoul",
+  "Asia/Shanghai",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Melbourne",
+  "Australia/Perth",
+  "Australia/Sydney",
+  "Europe/Amsterdam",
+  "Europe/Athens",
+  "Europe/Berlin",
+  "Europe/Dublin",
+  "Europe/Helsinki",
+  "Europe/Kyiv",
+  "Europe/Lisbon",
+  "Europe/London",
+  "Europe/Madrid",
+  "Europe/Moscow",
+  "Europe/Paris",
+  "Europe/Rome",
+  "Europe/Warsaw",
+  "Pacific/Auckland",
+  "Pacific/Honolulu",
+  "UTC",
+].toSorted((a, b) => a.localeCompare(b, "en"));
+
+let cachedSortedZones: string[] | null = null;
+
+function getSortedIanaTimeZones(): string[] {
+  if (cachedSortedZones) {
+    return cachedSortedZones;
+  }
+  try {
+    const supportedValuesOf = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] })
+      .supportedValuesOf;
+    if (typeof supportedValuesOf === "function") {
+      const raw = supportedValuesOf.call(Intl, "timeZone");
+      if (Array.isArray(raw) && raw.length > 0) {
+        cachedSortedZones = [...new Set(raw)].toSorted((a, b) => a.localeCompare(b, "en"));
+        return cachedSortedZones;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  cachedSortedZones = [...FALLBACK_IANA_TIMEZONES];
+  return cachedSortedZones;
+}
+
 function resolveAvailability(
   configForm: Record<string, unknown> | null,
   agentId: string,
@@ -145,6 +214,12 @@ export function renderAgentAvailability(params: {
   // Busy delay
   const busyDelay = avail.busyDelay ?? {};
 
+  const timezoneValue = (avail.timezone ?? "").trim();
+  const ianaZones = getSortedIanaTimeZones();
+  const ianaZoneSet = new Set(ianaZones);
+  const showCustomTimezoneOption =
+    timezoneValue !== "" && timezoneValue !== "local" && !ianaZoneSet.has(timezoneValue);
+
   return html`
     <div class="availability-panel">
       <div class="availability-panel-actions panel-actions-row">
@@ -180,21 +255,32 @@ export function renderAgentAvailability(params: {
         </div>
         <label class="field availability-field-block">
           <span>Agent timezone</span>
-          <input
-            type="text"
-            class="input--sm mono"
-            placeholder='e.g. "Europe/Kyiv" or "America/New_York"'
-            .value=${avail.timezone ?? ""}
+          <select
+            class="agents-select availability-timezone-select"
+            data-testid="availability-timezone"
             ?disabled=${disabled}
             @change=${(e: Event) => {
-              const v = (e.target as HTMLInputElement).value.trim();
+              const v = (e.target as HTMLSelectElement).value.trim();
               if (v) {
                 patch(["timezone"], v);
               } else {
                 remove(["timezone"]);
               }
             }}
-          />
+          >
+            <option value="" ?selected=${timezoneValue === ""}>Not set (inherit default)</option>
+            <option value="local" ?selected=${timezoneValue === "local"}>
+              Local (host timezone)
+            </option>
+            ${showCustomTimezoneOption
+              ? html`<option value=${timezoneValue} ?selected=${true}>
+                  ${timezoneValue} (from config)
+                </option>`
+              : nothing}
+            ${ianaZones.map(
+              (z) => html`<option value=${z} ?selected=${z === timezoneValue}>${z}</option>`,
+            )}
+          </select>
         </label>
       </section>
 

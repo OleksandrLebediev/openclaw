@@ -83,10 +83,12 @@ describe("renderAgentAvailability", () => {
     );
     await Promise.resolve();
 
-    const input = container.querySelector<HTMLInputElement>('input[placeholder*="Europe/Kyiv"]');
-    expect(input).toBeTruthy();
-    input!.value = "Europe/Berlin";
-    input!.dispatchEvent(new Event("change", { bubbles: true }));
+    const select = container.querySelector<HTMLSelectElement>(
+      '[data-testid="availability-timezone"]',
+    );
+    expect(select).toBeTruthy();
+    select!.value = "Europe/Berlin";
+    select!.dispatchEvent(new Event("change", { bubbles: true }));
 
     expect(onPatch).toHaveBeenCalledWith("a1", ["timezone"], "Europe/Berlin");
   });
@@ -110,9 +112,11 @@ describe("renderAgentAvailability", () => {
     );
     await Promise.resolve();
 
-    const input = container.querySelector<HTMLInputElement>('input[placeholder*="Europe/Kyiv"]');
-    input!.value = "";
-    input!.dispatchEvent(new Event("change", { bubbles: true }));
+    const select = container.querySelector<HTMLSelectElement>(
+      '[data-testid="availability-timezone"]',
+    );
+    select!.value = "";
+    select!.dispatchEvent(new Event("change", { bubbles: true }));
 
     expect(onRemove).toHaveBeenCalledWith("a1", ["timezone"]);
   });
@@ -163,8 +167,35 @@ describe("renderAgentAvailability", () => {
     );
     await Promise.resolve();
 
-    const input = container.querySelector<HTMLInputElement>('input[placeholder*="Europe/Kyiv"]');
-    expect(input?.disabled).toBe(true);
+    const select = container.querySelector<HTMLSelectElement>(
+      '[data-testid="availability-timezone"]',
+    );
+    expect(select?.disabled).toBe(true);
+  });
+
+  it("includes a one-off option when config timezone is not in the IANA list", async () => {
+    const container = document.createElement("div");
+    render(
+      renderAgentAvailability({
+        agentId: "a1",
+        configForm: baseConfigForm("a1", { timezone: "X-OpenClaw/NonIana" }),
+        configLoading: false,
+        configSaving: false,
+        configDirty: false,
+        onConfigReload: () => undefined,
+        onConfigSave: () => undefined,
+        onAvailabilityPatch: () => undefined,
+        onAvailabilityRemove: () => undefined,
+      }),
+      container,
+    );
+    await Promise.resolve();
+
+    const select = container.querySelector<HTMLSelectElement>(
+      '[data-testid="availability-timezone"]',
+    );
+    expect(select?.value).toBe("X-OpenClaw/NonIana");
+    expect(container.textContent).toContain("from config");
   });
 
   it("calls onConfigReload when Reload clicked", async () => {

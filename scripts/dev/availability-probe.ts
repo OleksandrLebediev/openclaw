@@ -131,6 +131,36 @@ function filterCases(opts: AvailabilityProbeOptions) {
   });
 }
 
+function buildAvailabilityRunContext(opts: AvailabilityProbeOptions): string {
+  const lines: string[] = [
+    "Each probe uses **passwordless SSH** to the host above and runs **`openclaw agent --json`** once with the **Input** message (session isolation and capture details: `scripts/dev/persona-probe/capture.ts`).",
+    "",
+    "**What is measured:** wall-clock `durationMs` for the full remote `openclaw agent` round trip (SSH, any gateway availability delay, and model inference).",
+    "",
+    "**Reading probes:** compares `durationMs` to **`computeReadingDelayMs(message, readingSpeed)`** from `src/agents/availability.ts`, using the readingSpeed preset encoded in that probe (see **Scenario** per row). Optional **`--reading-speed`** JSON is merged on top of that preset for the same run. Lower-bound misses are usually **warn** severity because model latency can dominate.",
+    "",
+  ];
+  if (opts.preset === "all") {
+    lines.push(
+      "- **Preset:** `all` — runs every built-in reading-speed preset (two messages each) plus sanity. Each row expects the readingSpeed tied to that probe id; the gateway may still be configured differently, so read **Check outcomes** for what actually matched.",
+    );
+  } else {
+    lines.push(
+      `- **Preset:** \`${opts.preset}\` — only reading cases for that preset, plus sanity.`,
+    );
+  }
+  const mergeKeys = opts.readingSpeedMerge ? Object.keys(opts.readingSpeedMerge) : [];
+  if (mergeKeys.length > 0) {
+    lines.push(
+      `- **CLI merge:** \`${JSON.stringify(opts.readingSpeedMerge)}\` merged over each case’s preset readingSpeed when computing expectations.`,
+    );
+  }
+  lines.push(
+    "- **How to read results:** the summary table is a quick scan; each **Raw Responses** block lists **Scenario**, **Timing**, every **Check outcomes** line (PASS/FAIL and the rubric text), then the model reply.",
+  );
+  return lines.join("\n");
+}
+
 async function runProbe(
   opts: AvailabilityProbeOptions,
   probeCase: ReturnType<typeof availabilityCasesToProbeCases>[number],
@@ -197,6 +227,7 @@ async function main(): Promise<void> {
     results,
     baseline,
     harness: "availability-probe",
+    runContext: buildAvailabilityRunContext(opts),
   };
 
   await writeReports(report, outputDir, opts.writeJson);

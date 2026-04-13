@@ -77,6 +77,8 @@ export type ProbeVerdict = "pass" | "warn" | "fail" | "error";
 export type ProbeResult = {
   probeId: string;
   group: string;
+  /** Human-readable intent of the case (from `ProbeCase.description`). */
+  description: string;
   message: string;
   verdict: ProbeVerdict;
   checkResults: CheckResult[];
@@ -114,6 +116,11 @@ export type ProbeReport = {
   baseline: BaselineEntry[] | null;
   /** Optional harness label for reports (e.g. `availability-probe`). */
   harness?: string;
+  /**
+   * Optional Markdown-friendly prose (short paragraphs / bullets) explaining what this run
+   * measured and how to read the report. Shown after the summary table in Markdown output.
+   */
+  runContext?: string;
 };
 
 /** CLI options passed to the runner. */

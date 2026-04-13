@@ -524,6 +524,7 @@ export const AgentReadingSpeedSchema = z
 export const AgentAvailabilitySchema = z
   .object({
     timezone: z.string().optional(),
+    inactiveHours: AgentTimeWindowSchema.optional(),
     activeHours: AgentTimeWindowSchema.optional(),
     busyWindows: z.array(AgentTimeWindowSchema).optional(),
     offlineMode: z.union([z.literal("queue"), z.literal("immediate")]).optional(),

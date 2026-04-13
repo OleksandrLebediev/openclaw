@@ -167,6 +167,7 @@ export type AgentAvailabilityWindow = {
 
 export type AgentAvailabilityConfig = {
   timezone?: string;
+  inactiveHours?: AgentAvailabilityWindow;
   activeHours?: AgentAvailabilityWindow;
   busyWindows?: AgentAvailabilityWindow[];
   offlineMode?: "queue" | "immediate";

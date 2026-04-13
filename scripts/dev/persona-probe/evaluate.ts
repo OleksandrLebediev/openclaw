@@ -121,6 +121,7 @@ export function evaluateProbe(
     return {
       probeId: probeCase.id,
       group: probeCase.group,
+      description: probeCase.description,
       message: probeCase.message,
       verdict: "error",
       checkResults: [],
@@ -135,6 +136,7 @@ export function evaluateProbe(
   return {
     probeId: probeCase.id,
     group: probeCase.group,
+    description: probeCase.description,
     message: probeCase.message,
     verdict,
     checkResults,

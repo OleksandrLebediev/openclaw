@@ -58,7 +58,7 @@ describe("renderAgentAvailability", () => {
 
     const text = container.textContent ?? "";
     expect(text).toContain("Timezone");
-    expect(text).toContain("Active Hours");
+    expect(text).toContain("Inactive Hours");
     expect(text).toContain("Offline Mode");
     expect(text).toContain("Busy Windows");
     expect(text).toContain("Busy Window Delay");

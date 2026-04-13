@@ -257,9 +257,9 @@ export function renderAgentAvailability(params: {
   const patch = (path: string[], value: unknown) => onAvailabilityPatch(agentId, path, value);
   const remove = (path: string[]) => onAvailabilityRemove(agentId, path);
 
-  // Active hours
-  const activeHours: AgentAvailabilityWindow = avail.activeHours ?? {};
-  const defaultActiveHours = defaults?.activeHours;
+  // Inactive hours (preferred schedule; when set, core ignores activeHours)
+  const inactiveHours: AgentAvailabilityWindow = avail.inactiveHours ?? {};
+  const defaultInactiveHours = defaults?.inactiveHours;
 
   // Busy windows
   const busyWindows: AgentAvailabilityWindow[] = avail.busyWindows ?? [];
@@ -354,42 +354,42 @@ export function renderAgentAvailability(params: {
         </label>
       </section>
 
-      <!-- Active Hours -->
+      <!-- Inactive Hours -->
       <section class="card">
-        <div class="card-title">Active Hours</div>
+        <div class="card-title">Inactive Hours</div>
         <div class="card-sub">
-          Agent responds normally inside this window. Outside it the message is queued (or replied
-          immediately — see Offline Mode below).
-          ${defaultActiveHours
+          Agent does not respond inside this window. Outside it the agent is available (unless you
+          also use legacy <code>activeHours</code> in raw config when this section is empty).
+          ${defaultInactiveHours
             ? html`
-                Default: <code>${defaultActiveHours.start ?? "—"}</code> –
-                <code>${defaultActiveHours.end ?? "—"}</code>.
+                Default: <code>${defaultInactiveHours.start ?? "—"}</code> –
+                <code>${defaultInactiveHours.end ?? "—"}</code>.
               `
             : nothing}
         </div>
         <div class="availability-field-block">
           ${renderTimeWindowFields({
-            window: activeHours,
+            window: inactiveHours,
             disabled,
             onStartChange: (v) => {
               if (v) {
-                patch(["activeHours", "start"], v);
+                patch(["inactiveHours", "start"], v);
               } else {
-                remove(["activeHours", "start"]);
+                remove(["inactiveHours", "start"]);
               }
             },
             onEndChange: (v) => {
               if (v) {
-                patch(["activeHours", "end"], v);
+                patch(["inactiveHours", "end"], v);
               } else {
-                remove(["activeHours", "end"]);
+                remove(["inactiveHours", "end"]);
               }
             },
             onDaysChange: (days) => {
               if (days.length > 0) {
-                patch(["activeHours", "days"], days);
+                patch(["inactiveHours", "days"], days);
               } else {
-                remove(["activeHours", "days"]);
+                remove(["inactiveHours", "days"]);
               }
             },
           })}
@@ -399,7 +399,10 @@ export function renderAgentAvailability(params: {
       <!-- Offline Mode -->
       <section class="card">
         <div class="card-title">Offline Mode</div>
-        <div class="card-sub">What happens when a message arrives outside active hours.</div>
+        <div class="card-sub">
+          What happens when a message arrives while the agent is offline (inside inactive hours or
+          outside active hours when inactive hours are not set).
+        </div>
         <label class="field availability-field-block">
           <span>Mode</span>
           <select
@@ -414,7 +417,7 @@ export function renderAgentAvailability(params: {
               }
             }}
           >
-            <option value="queue">Queue — wait for next active window</option>
+            <option value="queue">Queue — wait until the agent is available again</option>
             <option value="immediate">Immediate — reply regardless of schedule</option>
           </select>
         </label>

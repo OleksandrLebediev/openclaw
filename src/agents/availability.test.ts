@@ -4,7 +4,9 @@ import type { AgentTimeWindow } from "../config/types.base.js";
 import {
   computeBusyDelayMs,
   computeReadingDelayMs,
+  hasAvailabilityWindow,
   isInTimeWindow,
+  msUntilLeaveTimeWindow,
   msUntilWindowStart,
   resolveAgentAvailabilityConfig,
   resolveAgentTimezone,
@@ -225,5 +227,52 @@ describe("resolveAgentAvailabilityConfig", () => {
     const cfg = makeCfg({ busyWindows });
     const result = resolveAgentAvailabilityConfig(cfg, "test-agent");
     expect(result?.busyWindows).toEqual(busyWindows);
+  });
+
+  it("merges inactiveHours from defaults when agent has none", () => {
+    const inactiveHours = { start: "22:00", end: "08:00" };
+    const cfg = makeCfg({ inactiveHours });
+    const result = resolveAgentAvailabilityConfig(cfg, "test-agent");
+    expect(result?.inactiveHours).toEqual(inactiveHours);
+  });
+});
+
+describe("hasAvailabilityWindow", () => {
+  it("returns false for undefined or empty window", () => {
+    expect(hasAvailabilityWindow(undefined)).toBe(false);
+    expect(hasAvailabilityWindow({})).toBe(false);
+  });
+
+  it("returns true when start, end, or days are set", () => {
+    expect(hasAvailabilityWindow({ start: "09:00" })).toBe(true);
+    expect(hasAvailabilityWindow({ end: "18:00" })).toBe(true);
+    expect(hasAvailabilityWindow({ days: ["sat"] })).toBe(true);
+  });
+});
+
+describe("msUntilLeaveTimeWindow", () => {
+  const tz = "UTC";
+
+  it("returns 0 when outside the window", () => {
+    const window: AgentTimeWindow = { start: "12:00", end: "13:00" };
+    expect(msUntilLeaveTimeWindow(window, d("2026-04-15T11:00:00Z"), tz)).toBe(0);
+  });
+
+  it("returns ms until end for a same-day window", () => {
+    const window: AgentTimeWindow = { start: "12:00", end: "13:00" };
+    // 12:30 → 30 minutes
+    expect(msUntilLeaveTimeWindow(window, d("2026-04-15T12:30:00Z"), tz)).toBe(30 * 60_000);
+  });
+
+  it("returns ms until morning end for overnight window when in evening segment", () => {
+    const window: AgentTimeWindow = { start: "22:00", end: "08:00" };
+    // Wed 23:00 UTC → Thu 08:00 = 9h
+    expect(msUntilLeaveTimeWindow(window, d("2026-04-15T23:00:00Z"), tz)).toBe(9 * 60 * 60_000);
+  });
+
+  it("returns ms until end for overnight window when in morning segment", () => {
+    const window: AgentTimeWindow = { start: "22:00", end: "08:00" };
+    // Wed 03:00 → 08:00 = 5h
+    expect(msUntilLeaveTimeWindow(window, d("2026-04-15T03:00:00Z"), tz)).toBe(5 * 60 * 60_000);
   });
 });

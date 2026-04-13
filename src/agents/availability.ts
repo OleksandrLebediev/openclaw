@@ -30,6 +30,7 @@ export function resolveAgentAvailabilityConfig(
   }
   return {
     timezone: overrides?.timezone ?? defaults?.timezone,
+    inactiveHours: overrides?.inactiveHours ?? defaults?.inactiveHours,
     activeHours: overrides?.activeHours ?? defaults?.activeHours,
     busyWindows: overrides?.busyWindows ?? defaults?.busyWindows,
     offlineMode: overrides?.offlineMode ?? defaults?.offlineMode,
@@ -130,6 +131,37 @@ export function isInTimeWindow(window: AgentTimeWindow, now: Date, tz: string): 
   }
   // Overnight window: e.g. 22:00–06:00
   return nowMin >= start || nowMin < end;
+}
+
+/** True when the window constrains schedule (start/end times and/or days of week). */
+export function hasAvailabilityWindow(window?: AgentTimeWindow): boolean {
+  if (!window) {
+    return false;
+  }
+  const hasTimes = Boolean(window.start?.trim()) || Boolean(window.end?.trim());
+  if (hasTimes) {
+    return true;
+  }
+  return Boolean(window.days && window.days.length > 0);
+}
+
+/**
+ * Milliseconds until `now` is outside the window, or 0 if already outside.
+ * Uses one-minute forward steps so overnight windows and day filters stay correct.
+ */
+export function msUntilLeaveTimeWindow(window: AgentTimeWindow, now: Date, tz: string): number {
+  if (!isInTimeWindow(window, now, tz)) {
+    return 0;
+  }
+  const startMs = now.getTime();
+  const step = 60_000;
+  const maxMs = 10 * 24 * 60 * 60 * 1000;
+  for (let add = step; add <= maxMs; add += step) {
+    if (!isInTimeWindow(window, new Date(startMs + add), tz)) {
+      return add;
+    }
+  }
+  return step;
 }
 
 /**

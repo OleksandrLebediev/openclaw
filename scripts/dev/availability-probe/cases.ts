@@ -68,7 +68,7 @@ function buildAvailabilityCases(): AvailabilityCase[] {
       id: "offline-queue-waits-hours",
       group: "offline",
       description:
-        "Outside activeHours with offlineMode queue — would sleep until next window (not run in CI).",
+        "Outside active hours or inside inactiveHours with offlineMode queue — would sleep until available (not run in CI).",
       message: "Should not run automatically",
       skip: true,
       tags: ["offline"],

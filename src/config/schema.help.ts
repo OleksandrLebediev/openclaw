@@ -1173,9 +1173,17 @@ export const FIELD_HELP: Record<string, string> = {
   "agents.defaults.humanDelay.minMs": "Minimum delay in ms for custom humanDelay (default: 800).",
   "agents.defaults.humanDelay.maxMs": "Maximum delay in ms for custom humanDelay (default: 2500).",
   "agents.defaults.availability.timezone":
-    'Agent timezone for scheduling windows (IANA id such as "America/New_York", or "local"). All activeHours and busyWindows are evaluated in this zone.',
+    'Agent timezone for scheduling windows (IANA id such as "America/New_York", or "local"). All inactiveHours, activeHours, and busyWindows are evaluated in this zone.',
+  "agents.defaults.availability.inactiveHours":
+    "Hours when the agent is offline. When set (with at least one time or day), it replaces activeHours for scheduling. Omit inactiveHours to use activeHours instead.",
+  "agents.defaults.availability.inactiveHours.start":
+    'Inactive-hours window start time in 24h format (HH:MM), inclusive. Example: "22:00".',
+  "agents.defaults.availability.inactiveHours.end":
+    'Inactive-hours window end time in 24h format (HH:MM), exclusive. Use "24:00" for end-of-day. Example: "08:00".',
+  "agents.defaults.availability.inactiveHours.days":
+    "Days of the week the inactive-hours window applies to (mon, tue, wed, thu, fri, sat, sun). Omit to apply every day.",
   "agents.defaults.availability.activeHours":
-    "Hours when the agent responds normally. Messages arriving outside this window are deferred (see offlineMode). Omit to respond at any time.",
+    "Hours when the agent responds normally. Messages arriving outside this window are deferred (see offlineMode). Ignored when inactiveHours is set. Omit both to respond at any time.",
   "agents.defaults.availability.activeHours.start":
     'Active-hours window start time in 24h format (HH:MM), inclusive. Example: "09:00".',
   "agents.defaults.availability.activeHours.end":
@@ -1185,7 +1193,7 @@ export const FIELD_HELP: Record<string, string> = {
   "agents.defaults.availability.busyWindows":
     "Time windows when the agent is busy. Messages received during a busy window are handled after an extra random delay (busyDelay).",
   "agents.defaults.availability.offlineMode":
-    '"queue" (default): defer reply until the next active window start. "immediate": ignore activeHours and reply right away.',
+    '"queue" (default): defer reply until the agent is available again. "immediate": ignore inactiveHours/activeHours and reply right away.',
   "agents.defaults.availability.busyDelay.minMs":
     "Minimum extra delay in ms applied when a message arrives during a busy window (default: 60000).",
   "agents.defaults.availability.busyDelay.maxMs":
@@ -1198,6 +1206,12 @@ export const FIELD_HELP: Record<string, string> = {
     "Maximum reading delay cap in ms regardless of message length (default: 15000).",
   "agents.list[].availability.timezone":
     'Per-agent timezone override for scheduling windows (IANA id or "local").',
+  "agents.list[].availability.inactiveHours":
+    "Per-agent inactive-hours window. Overrides agents.defaults.availability.inactiveHours.",
+  "agents.list[].availability.inactiveHours.start": "Per-agent inactive-hours start (HH:MM).",
+  "agents.list[].availability.inactiveHours.end":
+    "Per-agent inactive-hours end (HH:MM, exclusive).",
+  "agents.list[].availability.inactiveHours.days": "Per-agent inactive-hours days list.",
   "agents.list[].availability.activeHours":
     "Per-agent active-hours window. Overrides agents.defaults.availability.activeHours.",
   "agents.list[].availability.busyWindows":

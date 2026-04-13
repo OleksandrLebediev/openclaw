@@ -92,6 +92,9 @@ export function printTerminalReport(report: ProbeReport, diffs: DiffEntry[]): vo
         `  ${vc}${c.bold}${vl}${c.reset}  ${c.gray}${dur.padEnd(5)}${c.reset}  "${truncate(result.message, 40)}"` +
           `\n         ${c.dim}→ ${responsePreview}${c.reset}\n`,
       );
+      if (result.description) {
+        process.stdout.write(`         ${c.dim}${truncate(result.description, 96)}${c.reset}\n`);
+      }
 
       // Show failed checks
       for (const cr of result.checkResults) {
@@ -155,7 +158,13 @@ function buildMarkdown(report: ProbeReport, diffs: DiffEntry[]): string {
   const harness = report.harness ?? "persona-probe";
   const lines: string[] = [];
 
-  lines.push(`# ${harness === "persona-probe" ? "Persona Probe" : harness} Report`);
+  lines.push(
+    harness === "persona-probe"
+      ? "# Persona Probe Report"
+      : harness === "availability-probe"
+        ? "# Availability probe report (SSH)"
+        : `# ${harness} Report`,
+  );
   lines.push(``);
   lines.push(`| Field | Value |`);
   lines.push(`|-------|-------|`);
@@ -170,6 +179,13 @@ function buildMarkdown(report: ProbeReport, diffs: DiffEntry[]): string {
 
   lines.push(`| Summary | ${pass} pass / ${warn} warn / ${fail} fail / ${err} error |`);
   lines.push(``);
+
+  if (report.runContext?.trim()) {
+    lines.push(`## What this run did`);
+    lines.push(``);
+    lines.push(report.runContext.trim());
+    lines.push(``);
+  }
 
   // Baseline diff
   if (diffs.length > 0) {
@@ -189,11 +205,17 @@ function buildMarkdown(report: ProbeReport, diffs: DiffEntry[]): string {
   for (const group of groups) {
     lines.push(`## Group: ${group}`);
     lines.push(``);
-    lines.push(`| Result | Probe | Message | Tools | Failed Check | Response |`);
-    lines.push(`|--------|-------|---------|-------|-------------|----------|`);
+    lines.push(
+      `| Result | Probe | Duration | Scenario | Message | Tools | Failed check | Response |`,
+    );
+    lines.push(
+      `|--------|-------|----------|----------|---------|-------|-------------|----------|`,
+    );
 
     for (const result of results.filter((r) => r.group === group)) {
       const verdict = result.verdict.toUpperCase();
+      const duration = result.turn != null ? `${(result.turn.durationMs / 1000).toFixed(1)}s` : "—";
+      const scenario = mdEscape(truncate(result.description, 140));
       const tools =
         result.turn && result.turn.toolCalls.length > 0
           ? result.turn.toolCalls.map((t) => `\`${t.name}\``).join(", ")
@@ -207,7 +229,7 @@ function buildMarkdown(report: ProbeReport, diffs: DiffEntry[]): string {
         : (result.error ?? "—");
 
       lines.push(
-        `| ${verdict} | \`${result.probeId}\` | ${mdEscape(result.message)} | ${tools} | ${failedChecks || "—"} | ${response} |`,
+        `| ${verdict} | \`${result.probeId}\` | ${duration} | ${scenario} | ${mdEscape(result.message)} | ${tools} | ${failedChecks || "—"} | ${response} |`,
       );
     }
     lines.push(``);
@@ -220,8 +242,25 @@ function buildMarkdown(report: ProbeReport, diffs: DiffEntry[]): string {
   for (const result of results) {
     lines.push(`### \`${result.probeId}\``);
     lines.push(``);
+    lines.push(`**Scenario:** ${mdEscape(result.description)}`);
+    lines.push(``);
     lines.push(`**Input:** ${result.message}`);
     lines.push(``);
+    if (result.turn) {
+      lines.push(
+        `**Timing:** wall-clock \`durationMs\` = **${result.turn.durationMs}** (~${(result.turn.durationMs / 1000).toFixed(1)}s) for the full remote \`openclaw agent\` round trip.`,
+      );
+      lines.push(``);
+    }
+    if (result.checkResults.length > 0) {
+      lines.push(`**Check outcomes:**`);
+      lines.push(``);
+      for (const cr of result.checkResults) {
+        const mark = cr.passed ? "PASS" : "FAIL";
+        lines.push(`- **${mark}** — ${mdEscape(cr.reason)}`);
+      }
+      lines.push(``);
+    }
     if (result.turn) {
       lines.push(`**Response:**`);
       lines.push(``);
@@ -242,7 +281,7 @@ function buildMarkdown(report: ProbeReport, diffs: DiffEntry[]): string {
       }
       lines.push(`*Session file: \`${result.turn.sessionFile}\`*`);
     } else {
-      lines.push(`**Error:** ${result.error ?? "unknown"}`);
+      lines.push(`**Error:** ${mdEscape(result.error ?? "unknown")}`);
     }
     lines.push(``);
   }

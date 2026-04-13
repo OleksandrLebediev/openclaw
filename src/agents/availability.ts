@@ -8,9 +8,16 @@ import { resolveAgentConfig } from "./agent-scope.js";
 
 const DEFAULT_BUSY_DELAY_MIN_MS = 60_000;
 const DEFAULT_BUSY_DELAY_MAX_MS = 300_000;
+/** Typical silent reading rate for chat-style prose (words per minute). */
 const DEFAULT_READING_WPM = 200;
-const DEFAULT_READING_MIN_MS = 1_000;
-const DEFAULT_READING_MAX_MS = 15_000;
+/** Minimum time to notice and begin reading a message. */
+const DEFAULT_READING_MIN_MS = 2_000;
+/** Upper bound so very long messages do not stall for minutes. */
+const DEFAULT_READING_MAX_MS = 30_000;
+/** Roughly average adult typing speed (typing-test words per minute). */
+const DEFAULT_WRITING_WPM = 40;
+const DEFAULT_WRITING_MIN_MS = 1_500;
+const DEFAULT_WRITING_MAX_MS = 60_000;
 /** Typing-test "word" = 5 characters; used for outbound writing delay. */
 const TYPING_STANDARD_CHARS_PER_WORD = 5;
 
@@ -253,9 +260,9 @@ export function computeWritingDelayMs(
     return 0;
   }
 
-  const wpm = config.wpm ?? DEFAULT_READING_WPM;
-  const minMs = config.minMs ?? DEFAULT_READING_MIN_MS;
-  const maxMs = config.maxMs ?? DEFAULT_READING_MAX_MS;
+  const wpm = config.wpm ?? DEFAULT_WRITING_WPM;
+  const minMs = config.minMs ?? DEFAULT_WRITING_MIN_MS;
+  const maxMs = config.maxMs ?? DEFAULT_WRITING_MAX_MS;
 
   const standardWords = Math.ceil(charCount / TYPING_STANDARD_CHARS_PER_WORD);
   const rawMs = Math.ceil((standardWords / wpm) * 60_000);

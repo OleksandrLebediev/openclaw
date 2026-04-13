@@ -24,8 +24,12 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 - Agents: add optional `agents.defaults.availability` and `agents.list[].availability` for agent-side scheduling (timezone, active hours, busy windows, offline queue vs immediate replies, busy delay, reading-speed delay before replies). Control UI adds an **Agents → Availability** tab (documented in the Gateway configuration reference).
 - Dev: add `pnpm availability:probe` (`scripts/dev/availability-probe.ts`) to smoke-test reading-delay wall time on a remote host via SSH, reusing persona-probe capture and shared report output.
 - Dev: extend `availability:probe` with named `**--preset`** reading-speed bundles, `**--list-presets**`, and `**--reading-speed\*\*`JSON merge so one host config can be exercised without editing`cases.ts`.
+- Dev: extend `availability:probe` with more inbound reading lengths, a **`writing`** group (echo prompts; `read+write` lower bound vs `durationMs`), preset **`writingSpeed`** snippets, and **`--writing-speed`** JSON merge.
+- Dev: add **`--print-expectations`** to `availability:probe` (Markdown tables of expected read/write delays from gateway helpers) plus `test/availability-probe-expectations.test.ts` for parametric delay checks.
+- Gateway/diagnostics: emit **`reply.availability_timing`** events from `dispatch-from-config` when `diagnostics.enabled` (inbound `applyAvailabilityWait` wall time and outbound `writingSpeed` sleep / skip reasons) for tests and `onDiagnosticEvent` consumers.
 - Docs: move SSH probe docs to [https://docs.openclaw.ai/help/remote-probes](https://docs.openclaw.ai/help/remote-probes) so they are not mixed into the Vitest testing guide.
 - Dev: availability / persona probe Markdown reports now include run context, per-probe scenarios, timing, and full check outcome lists.
+- Agents/availability: align implicit `readingSpeed` / `writingSpeed` defaults with typical human pacing (reading ~200 wpm with a 2s floor and 30s cap; outbound typing ~40 wpm with a 1.5s floor and 60s cap when individual fields are omitted).
 
 ### Fixes
 

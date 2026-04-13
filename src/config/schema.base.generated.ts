@@ -4782,7 +4782,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         maximum: 9007199254740991,
                         title: "Reading Delay Min (ms)",
                         description:
-                          "Minimum reading delay in ms regardless of message length (default: 1000).",
+                          "Minimum reading delay in ms regardless of message length (default: 2000).",
                       },
                       maxMs: {
                         type: "integer",
@@ -4790,7 +4790,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         maximum: 9007199254740991,
                         title: "Reading Delay Max (ms)",
                         description:
-                          "Maximum reading delay cap in ms regardless of message length (default: 15000).",
+                          "Maximum reading delay cap in ms regardless of message length (default: 30000).",
                       },
                     },
                     additionalProperties: false,
@@ -4805,7 +4805,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         maximum: 9007199254740991,
                         title: "Writing Speed (wpm)",
                         description:
-                          "Typing speed for outbound final replies in typing-test words per minute (default: 200). One word = 5 characters including spaces; delay runs before the final message is sent.",
+                          "Typing speed for outbound final replies in typing-test words per minute (default: 40, roughly average human typing). One word = 5 characters including spaces; delay runs before the final message is sent.",
                       },
                       minMs: {
                         type: "integer",
@@ -4813,7 +4813,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         maximum: 9007199254740991,
                         title: "Writing Delay Min (ms)",
                         description:
-                          "Minimum outbound typing delay in ms regardless of length (default: 1000).",
+                          "Minimum outbound typing delay in ms regardless of length (default: 1500).",
                       },
                       maxMs: {
                         type: "integer",
@@ -4821,7 +4821,7 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                         maximum: 9007199254740991,
                         title: "Writing Delay Max (ms)",
                         description:
-                          "Maximum outbound typing delay cap in ms regardless of length (default: 15000).",
+                          "Maximum outbound typing delay cap in ms regardless of length (default: 60000).",
                       },
                     },
                     additionalProperties: false,
@@ -25588,12 +25588,12 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "agents.defaults.availability.readingSpeed.minMs": {
       label: "Reading Delay Min (ms)",
-      help: "Minimum reading delay in ms regardless of message length (default: 1000).",
+      help: "Minimum reading delay in ms regardless of message length (default: 2000).",
       tags: ["advanced"],
     },
     "agents.defaults.availability.readingSpeed.maxMs": {
       label: "Reading Delay Max (ms)",
-      help: "Maximum reading delay cap in ms regardless of message length (default: 15000).",
+      help: "Maximum reading delay cap in ms regardless of message length (default: 30000).",
       tags: ["performance"],
     },
     "agents.defaults.availability.writingSpeed": {
@@ -25602,17 +25602,17 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     },
     "agents.defaults.availability.writingSpeed.wpm": {
       label: "Writing Speed (wpm)",
-      help: "Typing speed for outbound final replies in typing-test words per minute (default: 200). One word = 5 characters including spaces; delay runs before the final message is sent.",
+      help: "Typing speed for outbound final replies in typing-test words per minute (default: 40, roughly average human typing). One word = 5 characters including spaces; delay runs before the final message is sent.",
       tags: ["advanced"],
     },
     "agents.defaults.availability.writingSpeed.minMs": {
       label: "Writing Delay Min (ms)",
-      help: "Minimum outbound typing delay in ms regardless of length (default: 1000).",
+      help: "Minimum outbound typing delay in ms regardless of length (default: 1500).",
       tags: ["advanced"],
     },
     "agents.defaults.availability.writingSpeed.maxMs": {
       label: "Writing Delay Max (ms)",
-      help: "Maximum outbound typing delay cap in ms regardless of length (default: 15000).",
+      help: "Maximum outbound typing delay cap in ms regardless of length (default: 60000).",
       tags: ["performance"],
     },
     "agents.list[].availability": {

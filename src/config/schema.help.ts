@@ -1201,15 +1201,15 @@ export const FIELD_HELP: Record<string, string> = {
   "agents.defaults.availability.readingSpeed.wpm":
     "Words per minute the agent takes to read an incoming message before starting to reply (default: 200). Determines a natural pre-reply pause.",
   "agents.defaults.availability.readingSpeed.minMs":
-    "Minimum reading delay in ms regardless of message length (default: 1000).",
+    "Minimum reading delay in ms regardless of message length (default: 2000).",
   "agents.defaults.availability.readingSpeed.maxMs":
-    "Maximum reading delay cap in ms regardless of message length (default: 15000).",
+    "Maximum reading delay cap in ms regardless of message length (default: 30000).",
   "agents.defaults.availability.writingSpeed.wpm":
-    "Typing speed for outbound final replies in typing-test words per minute (default: 200). One word = 5 characters including spaces; delay runs before the final message is sent.",
+    "Typing speed for outbound final replies in typing-test words per minute (default: 40, roughly average human typing). One word = 5 characters including spaces; delay runs before the final message is sent.",
   "agents.defaults.availability.writingSpeed.minMs":
-    "Minimum outbound typing delay in ms regardless of length (default: 1000).",
+    "Minimum outbound typing delay in ms regardless of length (default: 1500).",
   "agents.defaults.availability.writingSpeed.maxMs":
-    "Maximum outbound typing delay cap in ms regardless of length (default: 15000).",
+    "Maximum outbound typing delay cap in ms regardless of length (default: 60000).",
   "agents.list[].availability.timezone":
     'Per-agent timezone override for scheduling windows (IANA id or "local").',
   "agents.list[].availability.inactiveHours":

@@ -1278,9 +1278,9 @@ Optional **agent-side** reply timing: inactive or active hours, busy windows, a 
         busyWindows: [{ start: "13:00", end: "16:00", days: ["mon", "tue", "wed", "thu", "fri"] }],
         offlineMode: "queue", // queue | immediate (omit or queue = wait until available)
         busyDelay: { minMs: 60_000, maxMs: 300_000 },
-        readingSpeed: { wpm: 200, minMs: 1000, maxMs: 15_000 },
+        readingSpeed: { wpm: 200, minMs: 2000, maxMs: 30_000 },
         // Outbound: delay before final send; length uses typing-test words (ceil(chars / 5)).
-        writingSpeed: { wpm: 40, minMs: 1000, maxMs: 15_000 },
+        writingSpeed: { wpm: 40, minMs: 1500, maxMs: 60_000 },
       },
     },
   },

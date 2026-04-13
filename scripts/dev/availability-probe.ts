@@ -1,18 +1,19 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /**
- * availability-probe — smoke-test agent availability (reading delay, wall time) on a remote host.
+ * availability-probe — smoke-test agent availability (reading / writing delay vs wall time) on a remote host.
  *
  * Reuses persona-probe capture (SSH → `openclaw agent --json`) and evaluates **wall-clock**
- * `durationMs` against expected reading delay from the same `computeReadingDelayMs` helper as
- * the gateway (see `src/agents/availability.ts`).
+ * `durationMs` against `computeReadingDelayMs` / `computeWritingDelayMs` from `src/agents/availability.ts`.
  *
- * Reading cases are generated per **preset** (`scripts/dev/availability-probe/presets.ts`).
- * Use **`--preset <id>`** so only cases matching the server’s `readingSpeed` run (default: `default`).
- * **`--preset all`** runs every preset’s reading cases (only useful if the server config matches
- * each block, or you accept noisy failures).
+ * **Reading** cases vary **inbound** length. **Writing** cases ask for a fixed echo so expectations
+ * use **assistant response length** for `writingSpeed` (combined with reading on the same inbound
+ * message when both are configured). The `openclaw agent` CLI often does **not** include channel
+ * outbound `writingSpeed` sleep — those rows may WARN even when Telegram delivery is correct.
  *
- * **`--reading-speed '<json>'`** merges onto each case’s expected `{ wpm, minMs, maxMs }` for
- * evaluation (CLI wins per field) without editing `cases.ts`.
+ * Reading + writing cases are generated per **preset** (`scripts/dev/availability-probe/presets.ts`).
+ * Use **`--preset <id>`** so only cases matching the server’s speeds run (default: `default`).
+ *
+ * **`--reading-speed` / `--writing-speed` '<json>'** merge onto expectations (CLI wins per field).
  *
  * Docs: `docs/help/remote-probes.md` (published as /help/remote-probes — not the Vitest testing guide).
  *
@@ -22,14 +23,16 @@
  *
  *   --list-presets      Print preset IDs + JSON for gateway config, then exit
  *   --preset  <id>      `default` | `high-min` | `slow-wpm` | `tight-cap` | `all` (default: default)
- *   --reading-speed <json>  Merge over expected readingSpeed for all reading cases
+ *   --reading-speed <json>  Merge over expected readingSpeed
+ *   --writing-speed <json>  Merge over expected writingSpeed (writing group + combined checks)
  *   --agent   <id>      Agent ID (default: AVAILABILITY_PROBE_AGENT or PERSONA_PROBE_AGENT)
  *   --host    <alias>   SSH host (default: AVAILABILITY_PROBE_HOST or PERSONA_PROBE_HOST or "claw")
  *   --output  <dir>     Artifacts (default: .artifacts/availability-probe)
- *   --group   <name>    Run one group: reading | sanity | offline
+ *   --group   <name>    Run one group: reading | writing | sanity | offline
  *   --tags    <a,b>     Comma-separated tags
  *   --no-baseline       Skip baseline diff/update
  *   --json              Also write JSON report
+ *   --print-expectations  Print Markdown tables of expected read/write delays (no SSH, no --agent)
  */
 import path from "node:path";
 import { availabilityCasesToProbeCases, AVAILABILITY_CASES } from "./availability-probe/cases.js";
@@ -37,6 +40,10 @@ import {
   AVAILABILITY_READING_PRESETS,
   listReadingPresetsText,
 } from "./availability-probe/presets.js";
+import {
+  printAvailabilityExpectations,
+  type PrintExpectationsParams,
+} from "./availability-probe/print-expectations.js";
 import type { AvailabilityProbeOptions, ReadingSpeedExpect } from "./availability-probe/types.js";
 import { captureProbe } from "./persona-probe/capture.js";
 import { evaluateProbe } from "./persona-probe/evaluate.js";
@@ -45,19 +52,40 @@ import type { ProbeReport, ProbeResult } from "./persona-probe/types.js";
 
 const PRESET_IDS = new Set(AVAILABILITY_READING_PRESETS.map((p) => p.id));
 
-function parseReadingSpeedMerge(raw: string | undefined): ReadingSpeedExpect | null {
+function parsePrintExpectationsArgs(argv: string[]): PrintExpectationsParams {
+  const args = argv.slice(2);
+  const get = (flag: string): string | undefined => {
+    const idx = args.indexOf(flag);
+    return idx >= 0 ? args[idx + 1] : undefined;
+  };
+  const presetRaw = get("--preset") ?? "default";
+  if (presetRaw !== "all" && !PRESET_IDS.has(presetRaw)) {
+    process.stderr.write(
+      `Error: unknown --preset ${JSON.stringify(presetRaw)}. ` +
+        `Expected one of: ${[...PRESET_IDS].join(", ")}, all\n`,
+    );
+    process.exit(1);
+  }
+  return {
+    preset: presetRaw,
+    readingSpeedMerge: parseSpeedMerge("--reading-speed", get("--reading-speed")),
+    writingSpeedMerge: parseSpeedMerge("--writing-speed", get("--writing-speed")),
+  };
+}
+
+function parseSpeedMerge(flag: string, raw: string | undefined): ReadingSpeedExpect | null {
   if (!raw) {
     return null;
   }
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      process.stderr.write("Error: --reading-speed must be a JSON object\n");
+      process.stderr.write(`Error: ${flag} must be a JSON object\n`);
       process.exit(1);
     }
     return parsed as ReadingSpeedExpect;
   } catch {
-    process.stderr.write("Error: --reading-speed must be valid JSON\n");
+    process.stderr.write(`Error: ${flag} must be valid JSON\n`);
     process.exit(1);
   }
 }
@@ -102,7 +130,8 @@ function parseArgs(argv: string[]): AvailabilityProbeOptions {
     tags: (get("--tags") ?? "").split(",").filter(Boolean),
     group: get("--group") ?? null,
     preset: presetRaw,
-    readingSpeedMerge: parseReadingSpeedMerge(get("--reading-speed")),
+    readingSpeedMerge: parseSpeedMerge("--reading-speed", get("--reading-speed")),
+    writingSpeedMerge: parseSpeedMerge("--writing-speed", get("--writing-speed")),
     noBaseline: has("--no-baseline"),
     writeJson: has("--json"),
   };
@@ -139,20 +168,29 @@ function buildAvailabilityRunContext(opts: AvailabilityProbeOptions): string {
     "",
     "**Reading probes:** compares `durationMs` to **`computeReadingDelayMs(message, readingSpeed)`** from `src/agents/availability.ts`, using the readingSpeed preset encoded in that probe (see **Scenario** per row). Optional **`--reading-speed`** JSON is merged on top of that preset for the same run. Lower-bound misses are usually **warn** severity because model latency can dominate.",
     "",
+    "**Writing probes:** compare `durationMs` to **read(inbound) + write(`response`)** using `computeWritingDelayMs` (5 characters = one typing word). Optional **`--writing-speed`** JSON merges like reading. If the measured path is `openclaw agent` only, outbound channel delay may be absent — interpret WARN rows accordingly.",
+    "",
   ];
   if (opts.preset === "all") {
     lines.push(
-      "- **Preset:** `all` — runs every built-in reading-speed preset (two messages each) plus sanity. Each row expects the readingSpeed tied to that probe id; the gateway may still be configured differently, so read **Check outcomes** for what actually matched.",
+      "- **Preset:** `all` — runs every built-in preset (several inbound reading lengths + two writing echoes per preset, plus sanity when not filtered). Each row expects the speeds tied to that probe id; the gateway may still differ, so read **Check outcomes**.",
     );
   } else {
+    const groupHint = opts.group ? ` **Group:** \`${opts.group}\` (other groups omitted).` : "";
     lines.push(
-      `- **Preset:** \`${opts.preset}\` — only reading cases for that preset, plus sanity.`,
+      `- **Preset:** \`${opts.preset}\` — reading + writing cases for that preset.${groupHint}`,
     );
   }
   const mergeKeys = opts.readingSpeedMerge ? Object.keys(opts.readingSpeedMerge) : [];
   if (mergeKeys.length > 0) {
     lines.push(
-      `- **CLI merge:** \`${JSON.stringify(opts.readingSpeedMerge)}\` merged over each case’s preset readingSpeed when computing expectations.`,
+      `- **CLI merge (reading):** \`${JSON.stringify(opts.readingSpeedMerge)}\` merged over each case’s preset readingSpeed when computing expectations.`,
+    );
+  }
+  const writeMergeKeys = opts.writingSpeedMerge ? Object.keys(opts.writingSpeedMerge) : [];
+  if (writeMergeKeys.length > 0) {
+    lines.push(
+      `- **CLI merge (writing):** \`${JSON.stringify(opts.writingSpeedMerge)}\` merged over each case’s preset writingSpeed when computing expectations.`,
     );
   }
   lines.push(
@@ -188,11 +226,18 @@ async function main(): Promise<void> {
     process.stdout.write(`${listReadingPresetsText()}\n`);
     process.exit(0);
   }
+  if (argv.includes("--print-expectations")) {
+    printAvailabilityExpectations(parsePrintExpectationsArgs(argv));
+    process.exit(0);
+  }
 
   const opts = parseArgs(argv);
   const idSet = new Set(filterCases(opts).map((c) => c.id));
-  const merge = opts.readingSpeedMerge ?? undefined;
-  const probeCases = availabilityCasesToProbeCases(merge).filter((p) => idSet.has(p.id));
+  const mergeRead = opts.readingSpeedMerge ?? undefined;
+  const mergeWrite = opts.writingSpeedMerge ?? undefined;
+  const probeCases = availabilityCasesToProbeCases(mergeRead, mergeWrite).filter((p) =>
+    idSet.has(p.id),
+  );
 
   if (probeCases.length === 0) {
     process.stderr.write("No availability probe cases matched the given filters.\n");
@@ -204,12 +249,12 @@ async function main(): Promise<void> {
 
   const presetNote =
     opts.preset === "all"
-      ? "preset=all (every reading preset; server must match each case’s readingSpeed)"
+      ? "preset=all (every preset block; align readingSpeed + writingSpeed)"
       : `preset=${opts.preset}`;
   process.stdout.write(
     `\x1b[1m[availability-probe]\x1b[0m Running ${probeCases.length} probe(s) against ` +
       `\x1b[36m${opts.agent}\x1b[0m @ \x1b[36m${opts.host}\x1b[0m\n` +
-      `\x1b[90m(${presetNote}; align gateway readingSpeed or pass --reading-speed JSON)\x1b[0m\n`,
+      `\x1b[90m(${presetNote}; align gateway readingSpeed/writingSpeed or pass --reading-speed / --writing-speed JSON)\x1b[0m\n`,
   );
 
   const results: ProbeResult[] = [];

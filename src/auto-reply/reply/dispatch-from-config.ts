@@ -24,7 +24,11 @@ import {
   toPluginMessageContext,
   toPluginMessageReceivedEvent,
 } from "../../hooks/message-hook-mappers.js";
-import { isDiagnosticsEnabled } from "../../infra/diagnostic-events.js";
+import {
+  emitDiagnosticEvent,
+  isDiagnosticsEnabled,
+  type DiagnosticReplyAvailabilityTimingEvent,
+} from "../../infra/diagnostic-events.js";
 import {
   logMessageProcessed,
   logMessageQueued,
@@ -222,6 +226,14 @@ export async function dispatchReplyFromConfig(params: {
 }): Promise<DispatchFromConfigResult> {
   const { ctx, cfg, dispatcher } = params;
   const diagnosticsEnabled = isDiagnosticsEnabled(cfg);
+  const emitReplyAvailabilityTiming = (
+    payload: Omit<DiagnosticReplyAvailabilityTimingEvent, "ts" | "seq">,
+  ) => {
+    if (!diagnosticsEnabled) {
+      return;
+    }
+    emitDiagnosticEvent(payload);
+  };
   const channel = String(ctx.Surface ?? ctx.Provider ?? "unknown").toLowerCase();
   const chatId = ctx.To ?? ctx.From;
   const messageId = ctx.MessageSid ?? ctx.MessageSidFirst ?? ctx.MessageSidLast;
@@ -287,11 +299,22 @@ export async function dispatchReplyFromConfig(params: {
   // Apply agent availability rules (active hours, busy windows, reading delay).
   // The inbound message is already persisted in the session transcript at this point,
   // so sleeping here never loses a message even if the gateway restarts during the wait.
+  const availabilityInboundT0 = diagnosticsEnabled ? Date.now() : 0;
   await applyAvailabilityWait({
     cfg,
     agentId: sessionAgentId,
     inboundText: ctx.Body ?? "",
   });
+  if (diagnosticsEnabled) {
+    emitReplyAvailabilityTiming({
+      type: "reply.availability_timing",
+      kind: "inbound_wait",
+      sessionKey: acpDispatchSessionKey ?? sessionKey,
+      channel,
+      agentId: sessionAgentId,
+      waitMs: Date.now() - availabilityInboundT0,
+    });
+  }
 
   const shouldEmitVerboseProgress = createShouldEmitVerboseProgress({
     sessionKey: acpDispatchSessionKey,
@@ -598,7 +621,8 @@ export async function dispatchReplyFromConfig(params: {
     const sendFinalPayload = async (
       payload: ReplyPayload,
     ): Promise<{ queuedFinal: boolean; routedFinalCount: number }> => {
-      const writingCfg = resolveAgentAvailabilityConfig(cfg, sessionAgentId)?.writingSpeed;
+      const agentAvailability = resolveAgentAvailabilityConfig(cfg, sessionAgentId);
+      const writingCfg = agentAvailability?.writingSpeed;
       const outboundText = typeof payload.text === "string" ? payload.text : "";
       const bodyTrimmed = outboundText.trim();
       const skipWritingDelay =
@@ -608,14 +632,78 @@ export async function dispatchReplyFromConfig(params: {
         isSilentReplyText(outboundText, SILENT_REPLY_TOKEN) ||
         isSilentReplyPrefixText(outboundText, SILENT_REPLY_TOKEN) ||
         isSilentReplyPrefixText(outboundText, HEARTBEAT_TOKEN);
-      if (!skipWritingDelay && writingCfg) {
+
+      const emitOutboundWritingTiming = (
+        fields: Omit<DiagnosticReplyAvailabilityTimingEvent, "type" | "kind" | "ts" | "seq">,
+      ) => {
+        if (!diagnosticsEnabled || !agentAvailability) {
+          return;
+        }
+        emitReplyAvailabilityTiming({
+          type: "reply.availability_timing",
+          kind: "outbound_writing",
+          sessionKey: acpDispatchSessionKey ?? sessionKey,
+          channel,
+          agentId: sessionAgentId,
+          ...fields,
+        });
+      };
+
+      const writingSkipReason = (): string => {
+        if (params.replyOptions?.isHeartbeat === true) {
+          return "heartbeat";
+        }
+        if (bodyTrimmed.length === 0) {
+          return "empty_body";
+        }
+        if (isSilentReplyText(outboundText, SILENT_REPLY_TOKEN)) {
+          return "silent_reply";
+        }
+        if (isSilentReplyPrefixText(outboundText, SILENT_REPLY_TOKEN)) {
+          return "silent_prefix";
+        }
+        if (isSilentReplyPrefixText(outboundText, HEARTBEAT_TOKEN)) {
+          return "heartbeat_prefix";
+        }
+        return "unknown";
+      };
+
+      if (!writingCfg) {
+        if (agentAvailability) {
+          emitOutboundWritingTiming({
+            skipped: true,
+            skipReason: "no_writing_speed_config",
+            outboundCharCount: bodyTrimmed.length,
+          });
+        }
+      } else if (skipWritingDelay) {
+        emitOutboundWritingTiming({
+          skipped: true,
+          skipReason: writingSkipReason(),
+          outboundCharCount: bodyTrimmed.length,
+        });
+      } else {
         const delayMs = computeWritingDelayMs(bodyTrimmed, writingCfg);
-        if (delayMs > 0) {
+        if (delayMs <= 0) {
+          emitOutboundWritingTiming({
+            skipped: true,
+            skipReason: "planned_zero",
+            plannedMs: 0,
+            outboundCharCount: bodyTrimmed.length,
+          });
+        } else {
           await params.replyOptions?.onReplyStart?.();
           logVerbose(
             `[writingSpeed] delaying final reply ${Math.round(delayMs / 1000)}s (${bodyTrimmed.length} chars)`,
           );
+          const writeT0 = diagnosticsEnabled ? Date.now() : 0;
           await sleepUnlessAborted(delayMs, params.replyOptions?.abortSignal);
+          emitOutboundWritingTiming({
+            skipped: false,
+            plannedMs: delayMs,
+            waitedMs: diagnosticsEnabled ? Date.now() - writeT0 : undefined,
+            outboundCharCount: bodyTrimmed.length,
+          });
         }
       }
 

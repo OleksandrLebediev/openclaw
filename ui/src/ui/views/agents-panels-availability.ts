@@ -581,7 +581,7 @@ export function renderAgentAvailability(params: {
               class="input--sm"
               min="0"
               step="1"
-              placeholder="1"
+              placeholder="2"
               .value=${readingSpeed.minMs !== undefined
                 ? String(Math.round(readingSpeed.minMs / 1000))
                 : ""}
@@ -603,7 +603,7 @@ export function renderAgentAvailability(params: {
               class="input--sm"
               min="0"
               step="1"
-              placeholder="15"
+              placeholder="30"
               .value=${readingSpeed.maxMs !== undefined
                 ? String(Math.round(readingSpeed.maxMs / 1000))
                 : ""}
@@ -636,7 +636,7 @@ export function renderAgentAvailability(params: {
               class="input--sm"
               min="1"
               step="10"
-              placeholder="200"
+              placeholder="40"
               .value=${writingSpeed.wpm !== undefined ? String(writingSpeed.wpm) : ""}
               ?disabled=${disabled}
               @change=${(e: Event) => {
@@ -656,7 +656,7 @@ export function renderAgentAvailability(params: {
               class="input--sm"
               min="0"
               step="1"
-              placeholder="1"
+              placeholder="2"
               .value=${writingSpeed.minMs !== undefined
                 ? String(Math.round(writingSpeed.minMs / 1000))
                 : ""}
@@ -678,7 +678,7 @@ export function renderAgentAvailability(params: {
               class="input--sm"
               min="0"
               step="1"
-              placeholder="15"
+              placeholder="60"
               .value=${writingSpeed.maxMs !== undefined
                 ? String(Math.round(writingSpeed.maxMs / 1000))
                 : ""}

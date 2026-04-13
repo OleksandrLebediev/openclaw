@@ -1,5 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { OpenClawConfig } from "../../config/config.js";
+import {
+  onDiagnosticEvent,
+  resetDiagnosticEventsForTest,
+  type DiagnosticReplyAvailabilityTimingEvent,
+} from "../../infra/diagnostic-events.js";
 import type { SessionBindingRecord } from "../../infra/outbound/session-binding-service.js";
 import type {
   AcpRuntime,
@@ -2432,6 +2437,58 @@ describe("dispatchReplyFromConfig", () => {
         sessionKey: "agent:main:main",
       }),
     );
+  });
+
+  it("emits reply.availability_timing when diagnostics enabled and writingSpeed is configured", async () => {
+    resetDiagnosticEventsForTest();
+    const timing: DiagnosticReplyAvailabilityTimingEvent[] = [];
+    const stop = onDiagnosticEvent((evt) => {
+      if (evt.type === "reply.availability_timing") {
+        timing.push(evt);
+      }
+    });
+    const sleepSpy = vi.spyOn(utils, "sleep").mockResolvedValue(undefined);
+    try {
+      setNoAbort();
+      const cfg = {
+        diagnostics: { enabled: true },
+        agents: {
+          defaults: {
+            availability: {
+              writingSpeed: { wpm: 60, minMs: 1000, maxMs: 10_000 },
+            },
+          },
+        },
+      } as OpenClawConfig;
+      const dispatcher = createDispatcher();
+      const ctx = buildTestCtx({
+        Provider: "slack",
+        Surface: "slack",
+        OriginatingChannel: "slack",
+        OriginatingTo: "channel:C123",
+        SessionKey: "agent:main:slack:channel:test",
+      });
+      await dispatchReplyFromConfig({
+        ctx,
+        cfg,
+        dispatcher,
+        replyResolver: async () => ({ text: "hello" }),
+      });
+      const inbound = timing.filter((e) => e.kind === "inbound_wait");
+      const outbound = timing.filter((e) => e.kind === "outbound_writing");
+      expect(inbound.length).toBeGreaterThanOrEqual(1);
+      expect(typeof inbound[0]?.waitMs).toBe("number");
+      const wrote = outbound.find((e) => e.kind === "outbound_writing" && e.skipped === false);
+      expect(wrote?.plannedMs).toBe(1000);
+      expect(wrote?.outboundCharCount).toBe(5);
+      const sleptMs = sleepSpy.mock.calls.reduce((acc, call) => acc + Number(call[0] ?? 0), 0);
+      expect(sleptMs).toBe(1000);
+      expect(typeof wrote?.waitedMs).toBe("number");
+    } finally {
+      sleepSpy.mockRestore();
+      stop();
+      resetDiagnosticEventsForTest();
+    }
   });
 
   it("routes plugin-owned bindings to the owning plugin before generic inbound claim broadcast", async () => {

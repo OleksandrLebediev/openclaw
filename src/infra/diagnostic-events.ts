@@ -147,6 +147,26 @@ export type DiagnosticToolLoopEvent = DiagnosticBaseEvent & {
   pairedToolName?: string;
 };
 
+/** Structured availability waits in `dispatch-from-config` (when `diagnostics.enabled`). */
+export type DiagnosticReplyAvailabilityTimingEvent = DiagnosticBaseEvent & {
+  type: "reply.availability_timing";
+  kind: "inbound_wait" | "outbound_writing";
+  sessionKey?: string;
+  channel?: string;
+  agentId?: string;
+  /** `inbound_wait`: wall ms spent in `applyAvailabilityWait`. */
+  waitMs?: number;
+  /** `outbound_writing`: configured typing delay before sleep. */
+  plannedMs?: number;
+  /** `outbound_writing`: wall ms inside chunked sleep (may be less than `plannedMs` if aborted). */
+  waitedMs?: number;
+  /** Trimmed outbound text length used for writing delay. */
+  outboundCharCount?: number;
+  skipped?: boolean;
+  /** Machine-oriented reason when `skipped` is true (e.g. `heartbeat`, `empty_body`, `silent_reply`). */
+  skipReason?: string;
+};
+
 export type DiagnosticEventPayload =
   | DiagnosticUsageEvent
   | DiagnosticWebhookReceivedEvent
@@ -160,7 +180,8 @@ export type DiagnosticEventPayload =
   | DiagnosticLaneDequeueEvent
   | DiagnosticRunAttemptEvent
   | DiagnosticHeartbeatEvent
-  | DiagnosticToolLoopEvent;
+  | DiagnosticToolLoopEvent
+  | DiagnosticReplyAvailabilityTimingEvent;
 
 export type DiagnosticEventInput = DiagnosticEventPayload extends infer Event
   ? Event extends DiagnosticEventPayload

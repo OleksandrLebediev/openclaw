@@ -104,7 +104,7 @@ export type AgentTimeWindow = {
 };
 
 export type AgentReadingSpeedConfig = {
-  /** Words per minute the agent "reads" incoming messages before replying (default: 200). */
+  /** Words per minute the agent "reads" incoming messages before replying (default: 200 wpm, 2s min, 30s max). */
   wpm?: number;
   /** Minimum pre-reply reading delay in ms. */
   minMs?: number;
@@ -137,7 +137,8 @@ export type AgentAvailabilityConfig = {
   /**
    * Simulated typing speed before delivering a final text reply. Uses the same
    * `{ wpm, minMs, maxMs }` shape as `readingSpeed`. WPM follows the typing-test
-   * convention: one "word" = 5 characters (including spaces).
+   * convention: one "word" = 5 characters (including spaces). Defaults target
+   * average human typing (~40 wpm, 1.5s min, 60s max) when fields are omitted.
    */
   writingSpeed?: AgentReadingSpeedConfig;
 };

@@ -87,7 +87,10 @@ export type { HookEntry } from "../hooks/types.js";
 export type { ReplyPayload } from "../auto-reply/types.js";
 export type { WizardPrompter } from "../wizard/prompts.js";
 export type { ContextEngineFactory } from "../context-engine/registry.js";
-export type { DiagnosticEventPayload } from "../infra/diagnostic-events.js";
+export type {
+  DiagnosticEventPayload,
+  DiagnosticReplyAvailabilityTimingEvent,
+} from "../infra/diagnostic-events.js";
 export type {
   AssembleResult,
   BootstrapResult,

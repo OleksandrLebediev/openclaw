@@ -2,7 +2,7 @@
 
 import type { Check, ProbeCase } from "../persona-probe/types.js";
 
-/** Same shape as config `agents.*.availability.readingSpeed` (subset). */
+/** Same shape as config `agents.*.availability.readingSpeed` / `writingSpeed` (subset). */
 export type ReadingSpeedExpect = {
   wpm?: number;
   minMs?: number;
@@ -29,6 +29,14 @@ export type AvailabilityCase = {
    * remote gateway or checks will be meaningless.
    */
   derivedFromReadingSpeed?: ReadingSpeedExpect;
+  /**
+   * When set, adds a lower bound from `computeWritingDelayMs(response.trim(), cfg)` using the
+   * **assistant text** returned by the probe (evaluated at check time). Align with
+   * `agents.*.availability.writingSpeed` on the host when that delay is on the measured path
+   * (for example channel auto-reply); `openclaw agent` CLI often does **not** include outbound
+   * writing delay, so combined checks may WARN even when the gateway is correct for DMs.
+   */
+  derivedFromWritingSpeed?: ReadingSpeedExpect;
   /** Subtracted from derived reading delay for the lower bound (default 2500). */
   slackMs?: number;
   /** Added to derived reading delay for the soft upper bound (default 180_000). */
@@ -41,6 +49,9 @@ export type AvailabilityCase = {
 
   /** Severity for duration-related checks (default `warn` — LLM latency is noisy). */
   durationSeverity?: "fail" | "warn";
+
+  /** For writing probes: minimum trimmed response length (echo fidelity). */
+  minResponseChars?: number;
 };
 
 export type AvailabilityProbeOptions = {
@@ -56,6 +67,8 @@ export type AvailabilityProbeOptions = {
   preset: string;
   /** Merged over each case’s `derivedFromReadingSpeed` for evaluation (CLI wins per field). */
   readingSpeedMerge: ReadingSpeedExpect | null;
+  /** Merged over each case’s `derivedFromWritingSpeed` for evaluation (CLI wins per field). */
+  writingSpeedMerge: ReadingSpeedExpect | null;
   noBaseline: boolean;
   writeJson: boolean;
 };

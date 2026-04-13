@@ -16,6 +16,23 @@ describe("diagnostic-events", () => {
     vi.restoreAllMocks();
   });
 
+  it("accepts reply.availability_timing payloads", () => {
+    const seen: string[] = [];
+    const stop = onDiagnosticEvent((event) => {
+      if (event.type === "reply.availability_timing") {
+        seen.push(`${event.kind}:${event.waitMs ?? event.plannedMs ?? event.skipReason}`);
+      }
+    });
+    emitDiagnosticEvent({
+      type: "reply.availability_timing",
+      kind: "inbound_wait",
+      waitMs: 42,
+      channel: "slack",
+    });
+    stop();
+    expect(seen).toEqual(["inbound_wait:42"]);
+  });
+
   it("emits monotonic seq and timestamps to subscribers", () => {
     vi.spyOn(Date, "now").mockReturnValueOnce(111).mockReturnValueOnce(222);
     const events: Array<{ seq: number; ts: number; type: string }> = [];

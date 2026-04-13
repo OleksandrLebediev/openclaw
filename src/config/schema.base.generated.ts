@@ -3178,6 +3178,21 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
               skipBootstrap: {
                 type: "boolean",
               },
+              personaMode: {
+                anyOf: [
+                  {
+                    type: "string",
+                    const: "agent",
+                  },
+                  {
+                    type: "string",
+                    const: "human",
+                  },
+                ],
+                title: "Persona Mode",
+                description:
+                  'Persona overlay mode: "human" loads persona/human.md from the workspace as PERSONA.md into the bootstrap context, enabling digital-human persona deployments. Omit or set "agent" to disable the overlay.',
+              },
               contextInjection: {
                 anyOf: [
                   {
@@ -4616,6 +4631,144 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                 },
                 additionalProperties: false,
               },
+              availability: {
+                type: "object",
+                properties: {
+                  timezone: {
+                    type: "string",
+                    title: "Agent Timezone",
+                    description:
+                      'Agent timezone for scheduling windows (IANA id such as "America/New_York", or "local"). All activeHours and busyWindows are evaluated in this zone.',
+                  },
+                  activeHours: {
+                    type: "object",
+                    properties: {
+                      start: {
+                        type: "string",
+                        title: "Active Hours Start",
+                        description:
+                          'Active-hours window start time in 24h format (HH:MM), inclusive. Example: "09:00".',
+                      },
+                      end: {
+                        type: "string",
+                        title: "Active Hours End",
+                        description:
+                          'Active-hours window end time in 24h format (HH:MM), exclusive. Use "24:00" for end-of-day. Example: "23:00".',
+                      },
+                      days: {
+                        type: "array",
+                        items: {
+                          type: "string",
+                          enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                        },
+                        title: "Active Days",
+                        description:
+                          "Days of the week the active-hours window applies to (mon, tue, wed, thu, fri, sat, sun). Omit to apply every day.",
+                      },
+                    },
+                    additionalProperties: false,
+                    title: "Active Hours",
+                    description:
+                      "Hours when the agent responds normally. Messages arriving outside this window are deferred (see offlineMode). Omit to respond at any time.",
+                  },
+                  busyWindows: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        start: {
+                          type: "string",
+                        },
+                        end: {
+                          type: "string",
+                        },
+                        days: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                            enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                          },
+                        },
+                      },
+                      additionalProperties: false,
+                    },
+                    title: "Busy Windows",
+                    description:
+                      "Time windows when the agent is busy. Messages received during a busy window are handled after an extra random delay (busyDelay).",
+                  },
+                  offlineMode: {
+                    anyOf: [
+                      {
+                        type: "string",
+                        const: "queue",
+                      },
+                      {
+                        type: "string",
+                        const: "immediate",
+                      },
+                    ],
+                    title: "Offline Mode",
+                    description:
+                      '"queue" (default): defer reply until the next active window start. "immediate": ignore activeHours and reply right away.',
+                  },
+                  busyDelay: {
+                    type: "object",
+                    properties: {
+                      minMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Busy Delay Min (ms)",
+                        description:
+                          "Minimum extra delay in ms applied when a message arrives during a busy window (default: 60000).",
+                      },
+                      maxMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Busy Delay Max (ms)",
+                        description:
+                          "Maximum extra delay in ms applied when a message arrives during a busy window (default: 300000).",
+                      },
+                    },
+                    additionalProperties: false,
+                    title: "Busy Window Delay",
+                  },
+                  readingSpeed: {
+                    type: "object",
+                    properties: {
+                      wpm: {
+                        type: "integer",
+                        exclusiveMinimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Reading Speed (wpm)",
+                        description:
+                          "Words per minute the agent takes to read an incoming message before starting to reply (default: 200). Determines a natural pre-reply pause.",
+                      },
+                      minMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Reading Delay Min (ms)",
+                        description:
+                          "Minimum reading delay in ms regardless of message length (default: 1000).",
+                      },
+                      maxMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Reading Delay Max (ms)",
+                        description:
+                          "Maximum reading delay cap in ms regardless of message length (default: 15000).",
+                      },
+                    },
+                    additionalProperties: false,
+                    title: "Reading Speed",
+                  },
+                },
+                additionalProperties: false,
+                title: "Agent Availability",
+              },
               timeoutSeconds: {
                 type: "integer",
                 exclusiveMinimum: 0,
@@ -5872,6 +6025,132 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   },
                   additionalProperties: false,
                 },
+                availability: {
+                  type: "object",
+                  properties: {
+                    timezone: {
+                      type: "string",
+                      title: "Agent Timezone",
+                      description:
+                        'Per-agent timezone override for scheduling windows (IANA id or "local").',
+                    },
+                    activeHours: {
+                      type: "object",
+                      properties: {
+                        start: {
+                          type: "string",
+                          title: "Active Hours Start",
+                        },
+                        end: {
+                          type: "string",
+                          title: "Active Hours End",
+                        },
+                        days: {
+                          type: "array",
+                          items: {
+                            type: "string",
+                            enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                          },
+                          title: "Active Days",
+                        },
+                      },
+                      additionalProperties: false,
+                      title: "Active Hours",
+                      description:
+                        "Per-agent active-hours window. Overrides agents.defaults.availability.activeHours.",
+                    },
+                    busyWindows: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          start: {
+                            type: "string",
+                          },
+                          end: {
+                            type: "string",
+                          },
+                          days: {
+                            type: "array",
+                            items: {
+                              type: "string",
+                              enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                            },
+                          },
+                        },
+                        additionalProperties: false,
+                      },
+                      title: "Busy Windows",
+                      description:
+                        "Per-agent busy windows. Overrides agents.defaults.availability.busyWindows.",
+                    },
+                    offlineMode: {
+                      anyOf: [
+                        {
+                          type: "string",
+                          const: "queue",
+                        },
+                        {
+                          type: "string",
+                          const: "immediate",
+                        },
+                      ],
+                      title: "Offline Mode",
+                      description: "Per-agent offline behavior override (queue or immediate).",
+                    },
+                    busyDelay: {
+                      type: "object",
+                      properties: {
+                        minMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Busy Delay Min (ms)",
+                          description: "Per-agent minimum busy window delay in ms.",
+                        },
+                        maxMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Busy Delay Max (ms)",
+                          description: "Per-agent maximum busy window delay in ms.",
+                        },
+                      },
+                      additionalProperties: false,
+                      title: "Busy Window Delay",
+                    },
+                    readingSpeed: {
+                      type: "object",
+                      properties: {
+                        wpm: {
+                          type: "integer",
+                          exclusiveMinimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Reading Speed (wpm)",
+                          description: "Per-agent reading speed in words per minute.",
+                        },
+                        minMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Reading Delay Min (ms)",
+                          description: "Per-agent minimum reading delay in ms.",
+                        },
+                        maxMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Reading Delay Max (ms)",
+                          description: "Per-agent maximum reading delay cap in ms.",
+                        },
+                      },
+                      additionalProperties: false,
+                      title: "Reading Speed",
+                    },
+                  },
+                  additionalProperties: false,
+                  title: "Agent Availability",
+                },
                 heartbeat: {
                   type: "object",
                   properties: {
@@ -6964,6 +7243,42 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                   title: "Agent Runtime",
                   description:
                     "Optional runtime descriptor for this agent. Use embedded for default OpenClaw execution or acp for external ACP harness defaults.",
+                },
+                personaMode: {
+                  anyOf: [
+                    {
+                      type: "string",
+                      const: "agent",
+                    },
+                    {
+                      type: "string",
+                      const: "human",
+                    },
+                  ],
+                  title: "Persona Mode",
+                  description:
+                    'Per-agent persona overlay mode. Overrides agents.defaults.personaMode for this agent. "human" loads HUMAN.md instead of AGENTS.md; "agent" forces standard agent behavior regardless of the global default.',
+                },
+                memory: {
+                  type: "object",
+                  properties: {
+                    userMode: {
+                      anyOf: [
+                        {
+                          type: "string",
+                          const: "solo",
+                        },
+                        {
+                          type: "string",
+                          const: "users",
+                        },
+                      ],
+                      title: "Memory User Mode",
+                      description:
+                        'Per-agent memory user mode. Overrides global memory.userMode. "users" isolates memory per user (auto-enabled when personaMode is "human"); "solo" uses global shared memory.',
+                    },
+                  },
+                  additionalProperties: false,
                 },
               },
               required: ["id"],
@@ -24174,6 +24489,11 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Optional repository root shown in the system prompt runtime line (overrides auto-detect).",
       tags: ["advanced"],
     },
+    "agents.defaults.personaMode": {
+      label: "Persona Mode",
+      help: 'Persona overlay mode: "human" loads persona/human.md from the workspace as PERSONA.md into the bootstrap context, enabling digital-human persona deployments. Omit or set "agent" to disable the overlay.',
+      tags: ["advanced"],
+    },
     "agents.defaults.contextInjection": {
       label: "Context Injection",
       help: 'Controls when workspace bootstrap files are injected into the system prompt: "always" (default) or "continuation-skip" for safe continuation turns after a completed assistant response.',
@@ -25064,6 +25384,147 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "agents.defaults.humanDelay.maxMs": {
       label: "Human Delay Max (ms)",
       help: "Maximum delay in ms for custom humanDelay (default: 2500).",
+      tags: ["performance"],
+    },
+    "agents.defaults.availability": {
+      label: "Agent Availability",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.timezone": {
+      label: "Agent Timezone",
+      help: 'Agent timezone for scheduling windows (IANA id such as "America/New_York", or "local"). All activeHours and busyWindows are evaluated in this zone.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.activeHours": {
+      label: "Active Hours",
+      help: "Hours when the agent responds normally. Messages arriving outside this window are deferred (see offlineMode). Omit to respond at any time.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.activeHours.start": {
+      label: "Active Hours Start",
+      help: 'Active-hours window start time in 24h format (HH:MM), inclusive. Example: "09:00".',
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.activeHours.end": {
+      label: "Active Hours End",
+      help: 'Active-hours window end time in 24h format (HH:MM), exclusive. Use "24:00" for end-of-day. Example: "23:00".',
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.activeHours.days": {
+      label: "Active Days",
+      help: "Days of the week the active-hours window applies to (mon, tue, wed, thu, fri, sat, sun). Omit to apply every day.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.busyWindows": {
+      label: "Busy Windows",
+      help: "Time windows when the agent is busy. Messages received during a busy window are handled after an extra random delay (busyDelay).",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.offlineMode": {
+      label: "Offline Mode",
+      help: '"queue" (default): defer reply until the next active window start. "immediate": ignore activeHours and reply right away.',
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.busyDelay": {
+      label: "Busy Window Delay",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.busyDelay.minMs": {
+      label: "Busy Delay Min (ms)",
+      help: "Minimum extra delay in ms applied when a message arrives during a busy window (default: 60000).",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.busyDelay.maxMs": {
+      label: "Busy Delay Max (ms)",
+      help: "Maximum extra delay in ms applied when a message arrives during a busy window (default: 300000).",
+      tags: ["performance"],
+    },
+    "agents.defaults.availability.readingSpeed": {
+      label: "Reading Speed",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.readingSpeed.wpm": {
+      label: "Reading Speed (wpm)",
+      help: "Words per minute the agent takes to read an incoming message before starting to reply (default: 200). Determines a natural pre-reply pause.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.readingSpeed.minMs": {
+      label: "Reading Delay Min (ms)",
+      help: "Minimum reading delay in ms regardless of message length (default: 1000).",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.readingSpeed.maxMs": {
+      label: "Reading Delay Max (ms)",
+      help: "Maximum reading delay cap in ms regardless of message length (default: 15000).",
+      tags: ["performance"],
+    },
+    "agents.list[].availability": {
+      label: "Agent Availability",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.timezone": {
+      label: "Agent Timezone",
+      help: 'Per-agent timezone override for scheduling windows (IANA id or "local").',
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.activeHours": {
+      label: "Active Hours",
+      help: "Per-agent active-hours window. Overrides agents.defaults.availability.activeHours.",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.activeHours.start": {
+      label: "Active Hours Start",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.activeHours.end": {
+      label: "Active Hours End",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.activeHours.days": {
+      label: "Active Days",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.busyWindows": {
+      label: "Busy Windows",
+      help: "Per-agent busy windows. Overrides agents.defaults.availability.busyWindows.",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.offlineMode": {
+      label: "Offline Mode",
+      help: "Per-agent offline behavior override (queue or immediate).",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.busyDelay": {
+      label: "Busy Window Delay",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.busyDelay.minMs": {
+      label: "Busy Delay Min (ms)",
+      help: "Per-agent minimum busy window delay in ms.",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.busyDelay.maxMs": {
+      label: "Busy Delay Max (ms)",
+      help: "Per-agent maximum busy window delay in ms.",
+      tags: ["performance"],
+    },
+    "agents.list[].availability.readingSpeed": {
+      label: "Reading Speed",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.readingSpeed.wpm": {
+      label: "Reading Speed (wpm)",
+      help: "Per-agent reading speed in words per minute.",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.readingSpeed.minMs": {
+      label: "Reading Delay Min (ms)",
+      help: "Per-agent minimum reading delay in ms.",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.readingSpeed.maxMs": {
+      label: "Reading Delay Max (ms)",
+      help: "Per-agent maximum reading delay cap in ms.",
       tags: ["performance"],
     },
     "agents.defaults.cliBackends": {
@@ -26266,6 +26727,16 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "agents.list[].skills": {
       label: "Agent Skill Filter",
       help: "Optional allowlist of skills for this agent. If omitted, the agent inherits agents.defaults.skills when set; otherwise skills stay unrestricted. Set [] for no skills. An explicit list fully replaces inherited defaults instead of merging with them.",
+      tags: ["advanced"],
+    },
+    "agents.list[].personaMode": {
+      label: "Persona Mode",
+      help: 'Per-agent persona overlay mode. Overrides agents.defaults.personaMode for this agent. "human" loads HUMAN.md instead of AGENTS.md; "agent" forces standard agent behavior regardless of the global default.',
+      tags: ["advanced"],
+    },
+    "agents.list[].memory.userMode": {
+      label: "Memory User Mode",
+      help: 'Per-agent memory user mode. Overrides global memory.userMode. "users" isolates memory per user (auto-enabled when personaMode is "human"); "solo" uses global shared memory.',
       tags: ["advanced"],
     },
     "agents.list[].identity.avatar": {

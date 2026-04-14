@@ -121,7 +121,7 @@ describe("renderAgentAvailability", () => {
     await Promise.resolve();
 
     const text = container.textContent ?? "";
-    expect(text).toMatch(/\(UTC[^)]+\)/);
+    expect(text).toMatch(/\(UTC[^\)]+\)/);
     expect(text).toMatch(/Pacific Time|Los Angeles/i);
   });
 

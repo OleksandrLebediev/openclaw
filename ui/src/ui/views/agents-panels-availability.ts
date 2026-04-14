@@ -393,8 +393,7 @@ export function renderAgentAvailability(params: {
         <div class="card-sub">
           All scheduling windows are evaluated in this timezone.
           ${defaults?.timezone
-            ? html` Default:
-                <code>${formatTimeZoneSelectLabel(defaults.timezone, offsetWhen)}</code>.`
+            ? html` Default: <code>${formatTimeZoneSelectLabel(defaults.timezone, offsetWhen)}</code>.`
             : nothing}
         </div>
         <label class="field availability-field-block">

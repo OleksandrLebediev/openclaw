@@ -157,7 +157,13 @@ describe("buildAgentSystemPrompt", () => {
     expect(human).not.toContain("## OpenClaw CLI Quick Reference");
     expect(human).not.toContain("openclaw gateway restart");
     expect(human).toContain("You are a real person — not an AI, not a bot, not an assistant.");
-    expect(human).toContain("## Execution Bias");
+    expect(human).not.toContain("## Execution Bias");
+    expect(human).not.toContain("## Reply Tags");
+    expect(human).not.toContain("## Silent Replies");
+    expect(human).not.toContain("/reasoning");
+    expect(human).not.toContain("## Workspace Files (injected)");
+    expect(human).not.toContain("sessions_send");
+    expect(human).not.toContain("subagents(action=");
 
     const humanWithGateway = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",
@@ -203,6 +209,49 @@ describe("buildAgentSystemPrompt", () => {
     });
     expect(agentWithSkills).toContain("## Skills (mandatory)");
     expect(agentWithSkills).toContain("Before replying: scan");
+  });
+
+  it("applies resolvePersonaPromptPolicy omissions for human persona full prompts", () => {
+    const prompt = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw-human",
+      personaMode: "human",
+      toolNames: ["message", "session_status"],
+      userTimezone: "America/Los_Angeles",
+      modelAliasLines: ["- Demo: provider/model"],
+      docsPath: "/tmp/openclaw-docs",
+      skillsPrompt: "<available_skills><skill><name>x</name></skill></available_skills>",
+      runtimeInfo: {
+        host: "h",
+        os: "linux",
+        arch: "arm64",
+        node: "22",
+        model: "m",
+        channel: "telegram",
+      },
+    });
+
+    expect(prompt).toContain("You are a real person — not an AI, not a bot, not an assistant.");
+    expect(prompt).toContain("## Safety");
+    expect(prompt).toContain("## Messaging");
+    expect(prompt).toContain("## Workspace");
+    expect(prompt).toContain("## Runtime");
+    expect(prompt).toContain("<available_skills>");
+    expect(prompt).toContain("session_status");
+
+    expect(prompt).not.toContain("## Execution Bias");
+    expect(prompt).not.toContain("## Documentation");
+    expect(prompt).not.toContain("## Model Aliases");
+    expect(prompt).not.toContain("Demo: provider/model");
+    expect(prompt).not.toContain("## Reply Tags");
+    expect(prompt).not.toContain("## Silent Replies");
+    expect(prompt).not.toContain("## Workspace Files (injected)");
+    expect(prompt).not.toContain("sessions_send");
+    expect(prompt).not.toContain("subagents(action=");
+    expect(prompt).not.toContain("/reasoning");
+    expect(prompt).not.toContain("## Skills (mandatory)");
+    expect(prompt).not.toContain(
+      "Treat this directory as the single global workspace for file operations",
+    );
   });
 
   it("includes skills in minimal prompt mode when skillsPrompt is provided (cron regression)", () => {

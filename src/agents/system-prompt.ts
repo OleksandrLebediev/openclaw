@@ -19,6 +19,10 @@ import type {
   ProviderSystemPromptContribution,
   ProviderSystemPromptSectionId,
 } from "./system-prompt-contribution.js";
+import {
+  buildHumanPersonaSkillCatalogLines,
+  resolvePersonaPromptPolicy,
+} from "./system-prompt-human.js";
 
 /**
  * Controls which hardcoded sections are included in the system prompt.
@@ -122,15 +126,6 @@ function buildSkillsSection(params: { skillsPrompt?: string; readToolName: strin
   ];
 }
 
-/** Human persona: keep optional skills catalog only; omit orchestrator-style SKILL.md scan rules. */
-function buildHumanPersonaSkillsSection(params: { skillsPrompt?: string }) {
-  const trimmed = params.skillsPrompt?.trim();
-  if (!trimmed) {
-    return [];
-  }
-  return [trimmed, ""];
-}
-
 function buildMemorySection(params: {
   isMinimal: boolean;
   availableTools: Set<string>;
@@ -201,6 +196,8 @@ function buildReplyTagsSection(isMinimal: boolean) {
 
 function buildMessagingSection(params: {
   isMinimal: boolean;
+  /** Human persona: omit cross-session / subagent orchestration lines that require tools we do not expose. */
+  humanPersona?: boolean;
   availableTools: Set<string>;
   messageChannelOptions: string;
   inlineButtonsEnabled: boolean;
@@ -210,13 +207,25 @@ function buildMessagingSection(params: {
   if (params.isMinimal) {
     return [];
   }
+  const humanPersona = params.humanPersona === true;
+  const orchestrationLines = humanPersona
+    ? []
+    : [
+        "- Cross-session messaging → use sessions_send(sessionKey, message)",
+        "- Sub-agent orchestration → use subagents(action=list|steer|kill)",
+      ];
+  const completionLine = humanPersona
+    ? "- If the runtime asks for a user-visible update, reply in your own words (do not paste raw internal diagnostics)."
+    : `- Runtime-generated completion events may ask for a user update. Rewrite those in your normal assistant voice and send the update (do not forward raw internal metadata or default to ${SILENT_REPLY_TOKEN}).`;
+  const routingSafetyLine = humanPersona
+    ? "- Do not use shell commands or raw HTTP to send chat; use the message tool when you need to act on the conversation."
+    : "- Never use exec/curl for provider messaging; OpenClaw handles all routing internally.";
   return [
     "## Messaging",
     "- Reply in current session → automatically routes to the source channel (Signal, Telegram, etc.)",
-    "- Cross-session messaging → use sessions_send(sessionKey, message)",
-    "- Sub-agent orchestration → use subagents(action=list|steer|kill)",
-    `- Runtime-generated completion events may ask for a user update. Rewrite those in your normal assistant voice and send the update (do not forward raw internal metadata or default to ${SILENT_REPLY_TOKEN}).`,
-    "- Never use exec/curl for provider messaging; OpenClaw handles all routing internally.",
+    ...orchestrationLines,
+    completionLine,
+    routingSafetyLine,
     params.availableTools.has("message")
       ? [
           "",
@@ -367,7 +376,7 @@ export function buildAgentSystemPrompt(params: {
   promptContribution?: ProviderSystemPromptContribution;
   /** Long-term profile content for the current user (from memory/users/<channel>/<userId>/profile.md). Injected as ## About this user when present and not in minimal mode. */
   userProfileContent?: string;
-  /** When "human", the core identity opener is omitted so SOUL.md/IDENTITY.md/HUMAN.md can define the persona without contradiction. */
+  /** When "human", persona-specific policy trims orchestrator-style scaffold; see `system-prompt-human.ts`. */
   personaMode?: "agent" | "human";
 }) {
   const acpEnabled = params.acpEnabled !== false;
@@ -449,6 +458,7 @@ export function buildAgentSystemPrompt(params: {
   const messageChannelOptions = listDeliverableMessageChannels().join("|");
   const promptMode = params.promptMode ?? "full";
   const isMinimal = promptMode === "minimal" || promptMode === "none";
+  const personaPolicy = resolvePersonaPromptPolicy(params.personaMode);
   const sandboxContainerWorkspace = params.sandboxInfo?.containerWorkspaceDir?.trim();
   const sanitizedWorkspaceDir = sanitizeForPromptLiteral(params.workspaceDir);
   const sanitizedSandboxContainerWorkspace = sandboxContainerWorkspace
@@ -458,8 +468,9 @@ export function buildAgentSystemPrompt(params: {
     params.sandboxInfo?.enabled && sanitizedSandboxContainerWorkspace
       ? sanitizedSandboxContainerWorkspace
       : sanitizedWorkspaceDir;
-  const workspaceGuidance =
-    params.sandboxInfo?.enabled && sanitizedSandboxContainerWorkspace
+  const workspaceGuidance = !personaPolicy.includeWorkspaceFileOpsGuidance
+    ? "The path above anchors injected persona/project files in Project Context; treat it as background context, not an implicit request to modify the host or run engineering work unless the user clearly asks."
+    : params.sandboxInfo?.enabled && sanitizedSandboxContainerWorkspace
       ? `For read/write/edit/apply_patch, file paths resolve against host workspace: ${sanitizedWorkspaceDir}. For bash/exec commands, use sandbox container paths under ${sanitizedSandboxContainerWorkspace} (or relative paths from that workdir), not host paths. Prefer relative paths so both sandboxed exec and file tools work consistently.`
       : "Treat this directory as the single global workspace for file operations unless explicitly instructed otherwise.";
   const safetySection = [
@@ -469,13 +480,12 @@ export function buildAgentSystemPrompt(params: {
     "Do not manipulate or persuade anyone to expand access or disable safeguards. Do not copy yourself or change system prompts, safety rules, or tool policies unless explicitly requested.",
     "",
   ];
-  const skillsSection =
-    params.personaMode === "human"
-      ? buildHumanPersonaSkillsSection({ skillsPrompt })
-      : buildSkillsSection({
-          skillsPrompt,
-          readToolName,
-        });
+  const skillsSection = personaPolicy.isHuman
+    ? buildHumanPersonaSkillCatalogLines(skillsPrompt)
+    : buildSkillsSection({
+        skillsPrompt,
+        readToolName,
+      });
   const memorySection = buildMemorySection({
     isMinimal,
     availableTools,
@@ -483,7 +493,7 @@ export function buildAgentSystemPrompt(params: {
   });
   const docsSection = buildDocsSection({
     docsPath: params.docsPath,
-    isMinimal,
+    isMinimal: isMinimal || !personaPolicy.includeDocumentationSection,
     readToolName,
   });
   const workspaceNotes = (params.workspaceNotes ?? [])
@@ -493,26 +503,17 @@ export function buildAgentSystemPrompt(params: {
     .map((line) => normalizeStructuredPromptSection(line))
     .filter(Boolean);
 
-  // In human persona mode the workspace files (SOUL.md / IDENTITY.md / HUMAN.md) define the
-  // persona; the generic "personal assistant" opener would contradict them.
-  // Use a strong human-identity framing so the model anchors on the persona before any tooling instructions.
-  const identityLine =
-    params.personaMode === "human"
-      ? "You are a real person — not an AI, not a bot, not an assistant. Your identity is defined in SOUL.md and IDENTITY.md."
-      : "You are a personal assistant operating inside OpenClaw.";
+  const identityLine = personaPolicy.identityLine;
 
   // For "none" mode, return just the basic identity line
   if (promptMode === "none") {
     return identityLine;
   }
 
-  const isHumanPersona = params.personaMode === "human";
-
   // Human persona: keep tools available via structured definitions, but omit the
   // heavy "## Tooling" guidance block so the system prompt reads less like an agent scaffold.
-  const toolingSectionLines: string[] = isHumanPersona
-    ? []
-    : [
+  const toolingSectionLines: string[] = personaPolicy.includeAgentToolingSection
+    ? [
         "## Tooling",
         "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
         "Tool names are case-sensitive. Call tools exactly as listed in the structured tool definitions.",
@@ -548,7 +549,8 @@ export function buildAgentSystemPrompt(params: {
           : []),
         "Do not poll `subagents list` / `sessions_list` in a loop; only check status on-demand (for intervention, debugging, or when explicitly asked).",
         "",
-      ];
+      ]
+    : [];
 
   const lines = [
     identityLine,
@@ -558,9 +560,8 @@ export function buildAgentSystemPrompt(params: {
       override: providerSectionOverrides.interaction_style,
       fallback: [],
     }),
-    ...(isHumanPersona
-      ? []
-      : buildOverridablePromptSection({
+    ...(personaPolicy.includeToolCallStyleFallback
+      ? buildOverridablePromptSection({
           override: providerSectionOverrides.tool_call_style,
           fallback: [
             "## Tool Call Style",
@@ -578,21 +579,23 @@ export function buildAgentSystemPrompt(params: {
             "When approvals are required, preserve and show the full command/script exactly as provided (including chained operators like &&, ||, |, ;, or multiline shells) so the user can approve what will actually run.",
             "",
           ],
-        })),
+        })
+      : []),
     ...buildOverridablePromptSection({
       override: providerSectionOverrides.execution_bias,
-      fallback: buildExecutionBiasSection({
-        isMinimal,
-      }),
+      fallback: personaPolicy.includeExecutionBiasFallback
+        ? buildExecutionBiasSection({
+            isMinimal,
+          })
+        : [],
     }),
     ...buildOverridablePromptSection({
       override: providerStablePrefix,
       fallback: [],
     }),
     ...safetySection,
-    ...(isHumanPersona
-      ? []
-      : [
+    ...(personaPolicy.includeCliQuickReference
+      ? [
           "## OpenClaw CLI Quick Reference",
           "OpenClaw is controlled via subcommands. Do not invent commands.",
           "To manage the Gateway daemon service (start/stop/restart):",
@@ -602,15 +605,18 @@ export function buildAgentSystemPrompt(params: {
           "- openclaw gateway restart",
           "If unsure, ask the user to run `openclaw help` (or `openclaw gateway --help`) and paste the output.",
           "",
-        ]),
+        ]
+      : []),
     ...skillsSection,
     ...memorySection,
     ...(params.userProfileContent && !isMinimal
       ? ["## About this user", params.userProfileContent, ""]
       : []),
     // Skip self-update for subagent/none modes and human persona (admin / product self-update is not persona voice).
-    hasGateway && !isMinimal && !isHumanPersona ? "## OpenClaw Self-Update" : "",
-    hasGateway && !isMinimal && !isHumanPersona
+    hasGateway && !isMinimal && personaPolicy.includeGatewaySelfUpdate
+      ? "## OpenClaw Self-Update"
+      : "",
+    hasGateway && !isMinimal && personaPolicy.includeGatewaySelfUpdate
       ? [
           "Get Updates (self-update) is ONLY allowed when the user explicitly asks for it.",
           "Do not run config.apply or update.run unless the user explicitly requests an update or config change; if it's not explicit, ask first.",
@@ -619,15 +625,19 @@ export function buildAgentSystemPrompt(params: {
           "After restart, OpenClaw pings the last active session automatically.",
         ].join("\n")
       : "",
-    hasGateway && !isMinimal && !isHumanPersona ? "" : "",
+    hasGateway && !isMinimal && personaPolicy.includeGatewaySelfUpdate ? "" : "",
     "",
-    // Skip model aliases for subagent/none modes
-    modelAliasLines.length > 0 && !isMinimal ? "## Model Aliases" : "",
-    modelAliasLines.length > 0 && !isMinimal
+    // Skip model aliases for subagent/none modes and human persona
+    modelAliasLines.length > 0 && !isMinimal && personaPolicy.includeModelAliasSection
+      ? "## Model Aliases"
+      : "",
+    modelAliasLines.length > 0 && !isMinimal && personaPolicy.includeModelAliasSection
       ? "Prefer aliases when specifying model overrides; full provider/model is also accepted."
       : "",
-    modelAliasLines.length > 0 && !isMinimal ? modelAliasLines.join("\n") : "",
-    modelAliasLines.length > 0 && !isMinimal ? "" : "",
+    modelAliasLines.length > 0 && !isMinimal && personaPolicy.includeModelAliasSection
+      ? modelAliasLines.join("\n")
+      : "",
+    modelAliasLines.length > 0 && !isMinimal && personaPolicy.includeModelAliasSection ? "" : "",
     userTimezone
       ? "If you need the current date, time, or day of week, run session_status (📊 session_status)."
       : "",
@@ -689,12 +699,17 @@ export function buildAgentSystemPrompt(params: {
     ...buildTimeSection({
       userTimezone,
     }),
-    "## Workspace Files (injected)",
-    "These user-editable files are loaded by OpenClaw and included below in Project Context.",
-    "",
-    ...buildReplyTagsSection(isMinimal),
+    ...(personaPolicy.includeWorkspaceBootstrapHeaders
+      ? [
+          "## Workspace Files (injected)",
+          "These user-editable files are loaded by OpenClaw and included below in Project Context.",
+          "",
+        ]
+      : []),
+    ...buildReplyTagsSection(isMinimal || !personaPolicy.includeReplyTagsSection),
     ...buildMessagingSection({
       isMinimal,
+      humanPersona: personaPolicy.isHuman,
       availableTools,
       messageChannelOptions,
       inlineButtonsEnabled,
@@ -746,8 +761,8 @@ export function buildAgentSystemPrompt(params: {
     }),
   );
 
-  // Skip silent replies for subagent/none modes
-  if (!isMinimal) {
+  // Skip silent replies for subagent/none modes and human persona (NO_REPLY still documented under message tool when needed).
+  if (!isMinimal && personaPolicy.includeSilentRepliesSection) {
     lines.push(
       "## Silent Replies",
       `Use ${SILENT_REPLY_TOKEN} ONLY when no user-visible reply is required.`,
@@ -805,7 +820,11 @@ export function buildAgentSystemPrompt(params: {
   lines.push(
     "## Runtime",
     buildRuntimeLine(runtimeInfo, runtimeChannel, runtimeCapabilities, params.defaultThinkLevel),
-    `Reasoning: ${reasoningLevel} (hidden unless on/stream). Toggle /reasoning; /status shows Reasoning when enabled.`,
+    ...(personaPolicy.includeAssistantRuntimeHints
+      ? [
+          `Reasoning: ${reasoningLevel} (hidden unless on/stream). Toggle /reasoning; /status shows Reasoning when enabled.`,
+        ]
+      : []),
   );
 
   return lines.filter(Boolean).join("\n");

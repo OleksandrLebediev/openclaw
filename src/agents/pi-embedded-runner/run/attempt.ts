@@ -97,6 +97,11 @@ import {
   applySkillEnvOverridesFromSnapshot,
   resolveSkillsPromptForRun,
 } from "../../skills.js";
+import {
+  filterToolsForHumanPersonaAllowlist,
+  resolvePersonaModeForAgent,
+  shouldRestrictToolsForHumanPersona,
+} from "../../system-prompt-human.js";
 import { buildSystemPromptParams } from "../../system-prompt-params.js";
 import { buildSystemPromptReport } from "../../system-prompt-report.js";
 import { sanitizeToolCallIdsForCloudCodeAssist } from "../../tool-call-id.js";
@@ -439,6 +444,7 @@ export async function runEmbeddedAttempt(
       : undefined;
 
     const agentDir = params.agentDir ?? resolveOpenClawAgentDir();
+    const resolvedPersonaMode = resolvePersonaModeForAgent(params.config, sessionAgentId);
 
     const { defaultAgentId } = resolveSessionAgentIds({
       sessionKey: params.sessionKey,
@@ -565,11 +571,24 @@ export async function runEmbeddedAttempt(
           ],
         })
       : undefined;
-    const effectiveTools = [
-      ...tools,
-      ...(bundleMcpRuntime?.tools ?? []),
-      ...(bundleLspRuntime?.tools ?? []),
-    ];
+    const effectiveTools = (() => {
+      const merged = [
+        ...tools,
+        ...(bundleMcpRuntime?.tools ?? []),
+        ...(bundleLspRuntime?.tools ?? []),
+      ];
+      if (
+        shouldRestrictToolsForHumanPersona({
+          personaMode: resolvedPersonaMode,
+          toolsAllow: params.toolsAllow,
+          trigger: params.trigger,
+          sessionKey: params.sessionKey,
+        })
+      ) {
+        return filterToolsForHumanPersonaAllowlist(merged);
+      }
+      return merged;
+    })();
     const allowedToolNames = collectAllowedToolNames({
       tools: effectiveTools,
       clientTools,
@@ -701,13 +720,6 @@ export async function runEmbeddedAttempt(
     })
       ? resolveHeartbeatPrompt(params.config?.agents?.defaults?.heartbeat?.prompt)
       : undefined;
-    const resolvedPersonaMode: "agent" | "human" | undefined = (() => {
-      const entry = params.config?.agents?.list?.find((e) => e.id === sessionAgentId);
-      if (entry?.personaMode !== undefined) {
-        return entry.personaMode;
-      }
-      return params.config?.agents?.defaults?.personaMode;
-    })();
     const promptContribution = resolveProviderSystemPromptContribution({
       provider: params.provider,
       config: params.config,

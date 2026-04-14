@@ -6,6 +6,9 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 
 ### Changes
 
+- Agents/persona: for `personaMode: "human"`, omit additional assistant-only prompt sections (execution bias, docs, model aliases, reply tags, silent replies, workspace bootstrap header, runtime slash hints) and shorten workspace/messaging prose; wire flags through `resolvePersonaPromptPolicy`.
+- Agents/persona: for embedded runs with `personaMode: "human"`, restrict the merged tool list to `message` and `session_status` unless `toolsAllow`, memory flush, cron, subagent, or ACP applies (see `HUMAN_PERSONA_TOOL_ALLOWLIST` in `system-prompt-human.ts`).
+- Agents/persona: centralize human-mode system prompt policy in `src/agents/system-prompt-human.ts` while keeping a single assembly pipeline in `system-prompt.ts`.
 - Agents/persona: omit the `## OpenClaw Self-Update` system-prompt section when `personaMode` is `human` (still omitted for minimal/none modes as before).
 - Agents/persona: omit the `## Skills (mandatory)` orchestrator block (SKILL.md scan rules) when `personaMode` is `human`; optional skills catalog text is still included when configured.
 - Agents/persona: omit the `## OpenClaw CLI Quick Reference` system-prompt section when `personaMode` is `human`.

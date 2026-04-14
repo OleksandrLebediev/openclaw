@@ -1,0 +1,139 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildHumanPersonaSkillCatalogLines,
+  filterToolsForHumanPersonaAllowlist,
+  resolvePersonaModeForAgent,
+  resolvePersonaPromptPolicy,
+  shouldRestrictToolsForHumanPersona,
+} from "./system-prompt-human.js";
+
+describe("resolvePersonaPromptPolicy", () => {
+  it("disables agent scaffold flags for human persona", () => {
+    const p = resolvePersonaPromptPolicy("human");
+    expect(p.isHuman).toBe(true);
+    expect(p.identityLine).toContain("real person");
+    expect(p.includeAgentToolingSection).toBe(false);
+    expect(p.includeToolCallStyleFallback).toBe(false);
+    expect(p.includeCliQuickReference).toBe(false);
+    expect(p.includeGatewaySelfUpdate).toBe(false);
+    expect(p.includeExecutionBiasFallback).toBe(false);
+    expect(p.includeDocumentationSection).toBe(false);
+    expect(p.includeReplyTagsSection).toBe(false);
+    expect(p.includeSilentRepliesSection).toBe(false);
+    expect(p.includeAssistantRuntimeHints).toBe(false);
+    expect(p.includeWorkspaceFileOpsGuidance).toBe(false);
+    expect(p.includeWorkspaceBootstrapHeaders).toBe(false);
+    expect(p.includeModelAliasSection).toBe(false);
+    expect(p.includeMessagingOrchestration).toBe(false);
+  });
+
+  it("enables agent scaffold flags for agent or unset", () => {
+    for (const mode of ["agent", undefined] as const) {
+      const p = resolvePersonaPromptPolicy(mode);
+      expect(p.isHuman).toBe(false);
+      expect(p.identityLine).toContain("personal assistant");
+      expect(p.includeAgentToolingSection).toBe(true);
+      expect(p.includeToolCallStyleFallback).toBe(true);
+      expect(p.includeCliQuickReference).toBe(true);
+      expect(p.includeGatewaySelfUpdate).toBe(true);
+      expect(p.includeExecutionBiasFallback).toBe(true);
+      expect(p.includeDocumentationSection).toBe(true);
+      expect(p.includeReplyTagsSection).toBe(true);
+      expect(p.includeSilentRepliesSection).toBe(true);
+      expect(p.includeAssistantRuntimeHints).toBe(true);
+      expect(p.includeWorkspaceFileOpsGuidance).toBe(true);
+      expect(p.includeWorkspaceBootstrapHeaders).toBe(true);
+      expect(p.includeModelAliasSection).toBe(true);
+      expect(p.includeMessagingOrchestration).toBe(true);
+    }
+  });
+});
+
+describe("resolvePersonaModeForAgent", () => {
+  it("prefers per-agent personaMode over defaults", () => {
+    expect(
+      resolvePersonaModeForAgent(
+        {
+          agents: {
+            defaults: { personaMode: "agent" },
+            list: [{ id: "lilu", personaMode: "human" }],
+          },
+        } as never,
+        "lilu",
+      ),
+    ).toBe("human");
+  });
+
+  it("falls back to defaults when agent entry has no personaMode", () => {
+    expect(
+      resolvePersonaModeForAgent(
+        {
+          agents: {
+            defaults: { personaMode: "human" },
+            list: [{ id: "main" }],
+          },
+        } as never,
+        "main",
+      ),
+    ).toBe("human");
+  });
+});
+
+describe("shouldRestrictToolsForHumanPersona", () => {
+  it("is false when toolsAllow is set", () => {
+    expect(
+      shouldRestrictToolsForHumanPersona({
+        personaMode: "human",
+        toolsAllow: ["read"],
+        trigger: undefined,
+        sessionKey: "agent:lilu:main",
+      }),
+    ).toBe(false);
+  });
+
+  it("is false for cron session keys", () => {
+    expect(
+      shouldRestrictToolsForHumanPersona({
+        personaMode: "human",
+        toolsAllow: undefined,
+        trigger: undefined,
+        sessionKey: "agent:main:cron:job:run:abc",
+      }),
+    ).toBe(false);
+  });
+
+  it("is true for human main agent session when no toolsAllow", () => {
+    expect(
+      shouldRestrictToolsForHumanPersona({
+        personaMode: "human",
+        toolsAllow: undefined,
+        trigger: undefined,
+        sessionKey: "agent:lilu:main",
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("filterToolsForHumanPersonaAllowlist", () => {
+  it("keeps only message and session_status", () => {
+    const out = filterToolsForHumanPersonaAllowlist([
+      { name: "exec" },
+      { name: "message" },
+      { name: "Session_Status" },
+    ]);
+    expect(out.map((t) => t.name)).toEqual(["message", "Session_Status"]);
+  });
+});
+
+describe("buildHumanPersonaSkillCatalogLines", () => {
+  it("returns empty array when no skills prompt", () => {
+    expect(buildHumanPersonaSkillCatalogLines(undefined)).toEqual([]);
+    expect(buildHumanPersonaSkillCatalogLines("   ")).toEqual([]);
+  });
+
+  it("returns catalog lines without mandatory heading", () => {
+    const lines = buildHumanPersonaSkillCatalogLines("<available_skills></available_skills>");
+    expect(lines).toEqual(["<available_skills></available_skills>", ""]);
+    expect(lines.join("\n")).not.toContain("## Skills (mandatory)");
+  });
+});

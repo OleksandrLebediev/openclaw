@@ -142,6 +142,30 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("Subagent details");
   });
 
+  it("omits ## Tooling for human persona mode but keeps subsequent agent guidance", () => {
+    const human = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      personaMode: "human",
+      toolNames: ["read", "exec"],
+    });
+    expect(human).not.toContain("## Tooling");
+    expect(human).not.toContain(
+      "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
+    );
+    expect(human).toContain("You are a real person — not an AI, not a bot, not an assistant.");
+    expect(human).toContain("## Tool Call Style");
+
+    const agent = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      personaMode: "agent",
+      toolNames: ["read", "exec"],
+    });
+    expect(agent).toContain("## Tooling");
+    expect(agent).toContain(
+      "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
+    );
+  });
+
   it("includes skills in minimal prompt mode when skillsPrompt is provided (cron regression)", () => {
     // Isolated cron sessions use promptMode="minimal" but must still receive skills.
     const skillsPrompt =

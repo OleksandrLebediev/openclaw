@@ -494,44 +494,53 @@ export function buildAgentSystemPrompt(params: {
     return identityLine;
   }
 
+  // Human persona: keep tools available via structured definitions, but omit the
+  // heavy "## Tooling" guidance block so the system prompt reads less like an agent scaffold.
+  const toolingSectionLines: string[] =
+    params.personaMode === "human"
+      ? []
+      : [
+          "## Tooling",
+          "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
+          "Tool names are case-sensitive. Call tools exactly as listed in the structured tool definitions.",
+          "If a tool is present in the structured tool definitions, it is available unless a later tool call reports a policy/runtime restriction.",
+          "TOOLS.md does not control tool availability; it is user guidance for how to use external tools.",
+          ...(hasCronTool
+            ? [
+                `For follow-up at a future time (for example "check back in 10 minutes", reminders, run-later work, or recurring tasks), use cron instead of ${execToolName} sleep, yieldMs delays, or ${processToolName} polling.`,
+                `Use ${execToolName}/${processToolName} only for commands that start now and continue running in the background.`,
+                `For long-running work that starts now, start it once and rely on automatic completion wake when it is enabled and the command emits output or fails; otherwise use ${processToolName} to confirm completion, and use it for logs, status, input, or intervention.`,
+                "Do not emulate scheduling with sleep loops, timeout loops, or repeated polling.",
+              ]
+            : [
+                `For long waits, avoid rapid poll loops: use ${execToolName} with enough yieldMs or ${processToolName}(action=poll, timeout=<ms>).`,
+                `For long-running work that starts now, start it once and rely on automatic completion wake when it is enabled and the command emits output or fails; otherwise use ${processToolName} to confirm completion, and use it for logs, status, input, or intervention.`,
+              ]),
+          ...(hasUpdatePlanTool
+            ? [
+                "For non-trivial multi-step work, keep a short plan updated with `update_plan`.",
+                "Skip `update_plan` for simple tasks, obvious one-step fixes, or work you can finish in a few direct actions.",
+                "When you use `update_plan`, keep exactly one step `in_progress` until the work is done.",
+                "After calling `update_plan`, continue the work and do not repeat the full plan unless the user asks.",
+              ]
+            : []),
+          "If a task is more complex or takes longer, spawn a sub-agent. Completion is push-based: it will auto-announce when done.",
+          ...(acpHarnessSpawnAllowed
+            ? [
+                'For requests like "do this in codex/claude code/cursor/gemini" or similar ACP harnesses, treat it as ACP harness intent and call `sessions_spawn` with `runtime: "acp"`.',
+                'On Discord, default ACP harness requests to thread-bound persistent sessions (`thread: true`, `mode: "session"`) unless the user asks otherwise.',
+                "Set `agentId` explicitly unless `acp.defaultAgent` is configured, and do not route ACP harness requests through `subagents`/`agents_list` or local PTY exec flows.",
+                'For ACP harness thread spawns, do not call `message` with `action=thread-create`; use `sessions_spawn` (`runtime: "acp"`, `thread: true`) as the single thread creation path.',
+              ]
+            : []),
+          "Do not poll `subagents list` / `sessions_list` in a loop; only check status on-demand (for intervention, debugging, or when explicitly asked).",
+          "",
+        ];
+
   const lines = [
     identityLine,
     "",
-    "## Tooling",
-    "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
-    "Tool names are case-sensitive. Call tools exactly as listed in the structured tool definitions.",
-    "If a tool is present in the structured tool definitions, it is available unless a later tool call reports a policy/runtime restriction.",
-    "TOOLS.md does not control tool availability; it is user guidance for how to use external tools.",
-    ...(hasCronTool
-      ? [
-          `For follow-up at a future time (for example "check back in 10 minutes", reminders, run-later work, or recurring tasks), use cron instead of ${execToolName} sleep, yieldMs delays, or ${processToolName} polling.`,
-          `Use ${execToolName}/${processToolName} only for commands that start now and continue running in the background.`,
-          `For long-running work that starts now, start it once and rely on automatic completion wake when it is enabled and the command emits output or fails; otherwise use ${processToolName} to confirm completion, and use it for logs, status, input, or intervention.`,
-          "Do not emulate scheduling with sleep loops, timeout loops, or repeated polling.",
-        ]
-      : [
-          `For long waits, avoid rapid poll loops: use ${execToolName} with enough yieldMs or ${processToolName}(action=poll, timeout=<ms>).`,
-          `For long-running work that starts now, start it once and rely on automatic completion wake when it is enabled and the command emits output or fails; otherwise use ${processToolName} to confirm completion, and use it for logs, status, input, or intervention.`,
-        ]),
-    ...(hasUpdatePlanTool
-      ? [
-          "For non-trivial multi-step work, keep a short plan updated with `update_plan`.",
-          "Skip `update_plan` for simple tasks, obvious one-step fixes, or work you can finish in a few direct actions.",
-          "When you use `update_plan`, keep exactly one step `in_progress` until the work is done.",
-          "After calling `update_plan`, continue the work and do not repeat the full plan unless the user asks.",
-        ]
-      : []),
-    "If a task is more complex or takes longer, spawn a sub-agent. Completion is push-based: it will auto-announce when done.",
-    ...(acpHarnessSpawnAllowed
-      ? [
-          'For requests like "do this in codex/claude code/cursor/gemini" or similar ACP harnesses, treat it as ACP harness intent and call `sessions_spawn` with `runtime: "acp"`.',
-          'On Discord, default ACP harness requests to thread-bound persistent sessions (`thread: true`, `mode: "session"`) unless the user asks otherwise.',
-          "Set `agentId` explicitly unless `acp.defaultAgent` is configured, and do not route ACP harness requests through `subagents`/`agents_list` or local PTY exec flows.",
-          'For ACP harness thread spawns, do not call `message` with `action=thread-create`; use `sessions_spawn` (`runtime: "acp"`, `thread: true`) as the single thread creation path.',
-        ]
-      : []),
-    "Do not poll `subagents list` / `sessions_list` in a loop; only check status on-demand (for intervention, debugging, or when explicitly asked).",
-    "",
+    ...toolingSectionLines,
     ...buildOverridablePromptSection({
       override: providerSectionOverrides.interaction_style,
       fallback: [],

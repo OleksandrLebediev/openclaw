@@ -164,6 +164,13 @@ describe("buildAgentSystemPrompt", () => {
     expect(human).not.toContain("## Workspace Files (injected)");
     expect(human).not.toContain("sessions_send");
     expect(human).not.toContain("subagents(action=");
+    expect(human).not.toContain("## Safety");
+    expect(human).not.toContain("## Workspace");
+    expect(human).not.toContain("## Current Date & Time");
+    expect(human).not.toContain("## Messaging");
+    expect(human).not.toContain("## Runtime");
+    expect(human).not.toContain("session_status");
+    expect(human).not.toContain("<!-- OPENCLAW_CACHE_BOUNDARY -->");
 
     const humanWithGateway = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",
@@ -220,6 +227,12 @@ describe("buildAgentSystemPrompt", () => {
       modelAliasLines: ["- Demo: provider/model"],
       docsPath: "/tmp/openclaw-docs",
       skillsPrompt: "<available_skills><skill><name>x</name></skill></available_skills>",
+      heartbeatPrompt: "ping-lilu",
+      contextFiles: [
+        { path: "/tmp/openclaw-human/SOUL.md", content: "# soul here" },
+        { path: "/tmp/openclaw-human/USER.md", content: "USER_STRIPPED" },
+        { path: "/tmp/openclaw-human/HEARTBEAT.md", content: "HEARTBEAT_DYNAMIC_STRIPPED" },
+      ],
       runtimeInfo: {
         host: "h",
         os: "linux",
@@ -231,12 +244,23 @@ describe("buildAgentSystemPrompt", () => {
     });
 
     expect(prompt).toContain("You are a real person — not an AI, not a bot, not an assistant.");
-    expect(prompt).toContain("## Safety");
-    expect(prompt).toContain("## Messaging");
-    expect(prompt).toContain("## Workspace");
-    expect(prompt).toContain("## Runtime");
     expect(prompt).toContain("<available_skills>");
-    expect(prompt).toContain("session_status");
+    expect(prompt).toContain("# soul here");
+    expect(prompt).toContain("## /tmp/openclaw-human/SOUL.md");
+    expect(prompt).not.toContain("USER_STRIPPED");
+    expect(prompt).not.toContain("## /tmp/openclaw-human/USER.md");
+    expect(prompt).not.toContain("HEARTBEAT_DYNAMIC_STRIPPED");
+    expect(prompt).not.toContain("# Project Context");
+    expect(prompt).not.toContain("<!-- OPENCLAW_CACHE_BOUNDARY -->");
+    expect(prompt).not.toContain("## Heartbeats");
+    expect(prompt).not.toContain("ping-lilu");
+
+    expect(prompt).not.toContain("## Safety");
+    expect(prompt).not.toContain("## Messaging");
+    expect(prompt).not.toContain("## Workspace");
+    expect(prompt).not.toContain("## Current Date & Time");
+    expect(prompt).not.toContain("## Runtime");
+    expect(prompt).not.toContain("session_status");
 
     expect(prompt).not.toContain("## Execution Bias");
     expect(prompt).not.toContain("## Documentation");

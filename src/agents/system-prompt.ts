@@ -21,7 +21,9 @@ import type {
 } from "./system-prompt-contribution.js";
 import {
   buildHumanPersonaSkillCatalogLines,
+  HUMAN_PERSONA_STRIPPED_CONTEXT_BASENAMES,
   resolvePersonaPromptPolicy,
+  type HumanPersonaPromptPolicy,
 } from "./system-prompt-human.js";
 
 /**
@@ -58,6 +60,18 @@ function isDynamicContextFile(pathValue: string): boolean {
   return DYNAMIC_CONTEXT_FILE_BASENAMES.has(getContextFileBasename(pathValue));
 }
 
+function filterContextFilesForPersona(
+  contextFiles: EmbeddedContextFile[],
+  personaPolicy: HumanPersonaPromptPolicy,
+): EmbeddedContextFile[] {
+  if (!personaPolicy.isHuman || personaPolicy.includeGenericContextFiles) {
+    return contextFiles;
+  }
+  return contextFiles.filter(
+    (file) => !HUMAN_PERSONA_STRIPPED_CONTEXT_BASENAMES.has(getContextFileBasename(file.path)),
+  );
+}
+
 function sortContextFilesForPrompt(contextFiles: EmbeddedContextFile[]): EmbeddedContextFile[] {
   return contextFiles.toSorted((a, b) => {
     const aPath = normalizeContextFilePath(a.path);
@@ -80,9 +94,18 @@ function buildProjectContextSection(params: {
   files: EmbeddedContextFile[];
   heading: string;
   dynamic: boolean;
+  /** Human persona: emit only per-file `## path` blocks (no "# Project Context" heading or intro). */
+  compact?: boolean;
 }) {
   if (params.files.length === 0) {
     return [];
+  }
+  if (params.compact) {
+    const lines: string[] = [];
+    for (const file of params.files) {
+      lines.push(`## ${file.path}`, "", file.content, "");
+    }
+    return lines;
   }
   const lines = [params.heading, ""];
   if (params.dynamic) {
@@ -593,7 +616,7 @@ export function buildAgentSystemPrompt(params: {
       override: providerStablePrefix,
       fallback: [],
     }),
-    ...safetySection,
+    ...(personaPolicy.includeSafetySection ? safetySection : []),
     ...(personaPolicy.includeCliQuickReference
       ? [
           "## OpenClaw CLI Quick Reference",
@@ -638,14 +661,18 @@ export function buildAgentSystemPrompt(params: {
       ? modelAliasLines.join("\n")
       : "",
     modelAliasLines.length > 0 && !isMinimal && personaPolicy.includeModelAliasSection ? "" : "",
-    userTimezone
+    userTimezone && personaPolicy.includeSessionStatusInlineHint
       ? "If you need the current date, time, or day of week, run session_status (📊 session_status)."
       : "",
-    "## Workspace",
-    `Your working directory is: ${displayWorkspaceDir}`,
-    workspaceGuidance,
-    ...workspaceNotes,
-    "",
+    ...(personaPolicy.includeWorkspaceSection
+      ? [
+          "## Workspace",
+          `Your working directory is: ${displayWorkspaceDir}`,
+          workspaceGuidance,
+          ...workspaceNotes,
+          "",
+        ]
+      : []),
     ...docsSection,
     params.sandboxInfo?.enabled ? "## Sandbox" : "",
     params.sandboxInfo?.enabled
@@ -697,7 +724,7 @@ export function buildAgentSystemPrompt(params: {
     params.sandboxInfo?.enabled ? "" : "",
     ...buildUserIdentitySection(ownerLine, isMinimal),
     ...buildTimeSection({
-      userTimezone,
+      userTimezone: personaPolicy.includeDateTimeSection ? userTimezone : undefined,
     }),
     ...(personaPolicy.includeWorkspaceBootstrapHeaders
       ? [
@@ -708,7 +735,7 @@ export function buildAgentSystemPrompt(params: {
       : []),
     ...buildReplyTagsSection(isMinimal || !personaPolicy.includeReplyTagsSection),
     ...buildMessagingSection({
-      isMinimal,
+      isMinimal: isMinimal || !personaPolicy.includeMessagingSection,
       humanPersona: personaPolicy.isHuman,
       availableTools,
       messageChannelOptions,
@@ -751,13 +778,22 @@ export function buildAgentSystemPrompt(params: {
     (file) => typeof file.path === "string" && file.path.trim().length > 0,
   );
   const orderedContextFiles = sortContextFilesForPrompt(validContextFiles);
-  const stableContextFiles = orderedContextFiles.filter((file) => !isDynamicContextFile(file.path));
-  const dynamicContextFiles = orderedContextFiles.filter((file) => isDynamicContextFile(file.path));
+  const personaFilteredContextFiles = filterContextFilesForPersona(
+    orderedContextFiles,
+    personaPolicy,
+  );
+  const stableContextFiles = personaFilteredContextFiles.filter(
+    (file) => !isDynamicContextFile(file.path),
+  );
+  const dynamicContextFiles = personaFilteredContextFiles.filter((file) =>
+    isDynamicContextFile(file.path),
+  );
   lines.push(
     ...buildProjectContextSection({
       files: stableContextFiles,
       heading: "# Project Context",
       dynamic: false,
+      compact: personaPolicy.isHuman && !personaPolicy.includeProjectContextBoilerplate,
     }),
   );
 
@@ -784,15 +820,19 @@ export function buildAgentSystemPrompt(params: {
   // Keep large stable prompt context above this seam so Anthropic-family
   // transports can reuse it across labs and turns. Dynamic group/session
   // additions and volatile project context below it are the primary cache invalidators.
-  lines.push(SYSTEM_PROMPT_CACHE_BOUNDARY);
+  if (personaPolicy.includePromptCacheBoundary) {
+    lines.push(SYSTEM_PROMPT_CACHE_BOUNDARY);
+  }
 
-  lines.push(
-    ...buildProjectContextSection({
-      files: dynamicContextFiles,
-      heading: stableContextFiles.length > 0 ? "# Dynamic Project Context" : "# Project Context",
-      dynamic: true,
-    }),
-  );
+  if (personaPolicy.includeDynamicContextFiles) {
+    lines.push(
+      ...buildProjectContextSection({
+        files: dynamicContextFiles,
+        heading: stableContextFiles.length > 0 ? "# Dynamic Project Context" : "# Project Context",
+        dynamic: true,
+      }),
+    );
+  }
 
   if (extraSystemPrompt) {
     // Use "Subagent Context" header for minimal mode (subagents), otherwise "Group Chat Context"
@@ -805,7 +845,7 @@ export function buildAgentSystemPrompt(params: {
   }
 
   // Skip heartbeats for subagent/none modes
-  if (!isMinimal && heartbeatPrompt) {
+  if (!isMinimal && heartbeatPrompt && personaPolicy.includeHeartbeatSection) {
     lines.push(
       "## Heartbeats",
       `Heartbeat prompt: ${heartbeatPrompt}`,
@@ -817,15 +857,17 @@ export function buildAgentSystemPrompt(params: {
     );
   }
 
-  lines.push(
-    "## Runtime",
-    buildRuntimeLine(runtimeInfo, runtimeChannel, runtimeCapabilities, params.defaultThinkLevel),
-    ...(personaPolicy.includeAssistantRuntimeHints
-      ? [
-          `Reasoning: ${reasoningLevel} (hidden unless on/stream). Toggle /reasoning; /status shows Reasoning when enabled.`,
-        ]
-      : []),
-  );
+  if (personaPolicy.includeRuntimeFooter) {
+    lines.push(
+      "## Runtime",
+      buildRuntimeLine(runtimeInfo, runtimeChannel, runtimeCapabilities, params.defaultThinkLevel),
+      ...(personaPolicy.includeAssistantRuntimeHints
+        ? [
+            `Reasoning: ${reasoningLevel} (hidden unless on/stream). Toggle /reasoning; /status shows Reasoning when enabled.`,
+          ]
+        : []),
+    );
+  }
 
   return lines.filter(Boolean).join("\n");
 }

@@ -15,10 +15,39 @@ export type PersonaMode = "agent" | "human";
 /** Core tools kept for human persona: outbound messaging + session/runtime facts. */
 export const HUMAN_PERSONA_TOOL_ALLOWLIST = new Set(["message", "session_status"]);
 
+/** Workspace context files dropped from the human system string (persona lives in SOUL/IDENTITY/HUMAN, etc.). */
+export const HUMAN_PERSONA_STRIPPED_CONTEXT_BASENAMES = new Set([
+  "user.md",
+  "tools.md",
+  "bootstrap.md",
+]);
+
 export type HumanPersonaPromptPolicy = {
   isHuman: boolean;
   /** First line of the system prompt (before sections). */
   identityLine: string;
+  /** Include the long "## Safety" constitution block. */
+  includeSafetySection: boolean;
+  /** Include "## Workspace" (path + note) and workspaceNotes in that block. */
+  includeWorkspaceSection: boolean;
+  /** Include "## Current Date & Time" when a time zone is configured. */
+  includeDateTimeSection: boolean;
+  /** Include the inline hint to call session_status for clock queries. */
+  includeSessionStatusInlineHint: boolean;
+  /** Include "## Messaging" and the "### message tool" subsection when applicable. */
+  includeMessagingSection: boolean;
+  /** Include "# Project Context" heading and intro paragraphs before injected files. */
+  includeProjectContextBoilerplate: boolean;
+  /** Include USER.md / TOOLS.md / BOOTSTRAP.md blocks when present in context files. */
+  includeGenericContextFiles: boolean;
+  /** Insert the OPENCLAW_CACHE_BOUNDARY marker between stable and dynamic context. */
+  includePromptCacheBoundary: boolean;
+  /** Append dynamic project context (e.g. HEARTBEAT.md) after the cache boundary. */
+  includeDynamicContextFiles: boolean;
+  /** Include "## Heartbeats" instructions when a heartbeat prompt is configured. */
+  includeHeartbeatSection: boolean;
+  /** Include "## Runtime" and the factual runtime summary line. */
+  includeRuntimeFooter: boolean;
   /** Include the long "## Tooling" block (cron/exec/subagent/ACP guidance). */
   includeAgentToolingSection: boolean;
   /** Include default "## Tool Call Style" (and provider tool_call_style fallback path). */
@@ -57,6 +86,17 @@ export function resolvePersonaPromptPolicy(personaMode?: PersonaMode): HumanPers
   return {
     isHuman,
     identityLine: isHuman ? HUMAN_IDENTITY_LINE : AGENT_IDENTITY_LINE,
+    includeSafetySection: !isHuman,
+    includeWorkspaceSection: !isHuman,
+    includeDateTimeSection: !isHuman,
+    includeSessionStatusInlineHint: !isHuman,
+    includeMessagingSection: !isHuman,
+    includeProjectContextBoilerplate: !isHuman,
+    includeGenericContextFiles: !isHuman,
+    includePromptCacheBoundary: !isHuman,
+    includeDynamicContextFiles: !isHuman,
+    includeHeartbeatSection: !isHuman,
+    includeRuntimeFooter: !isHuman,
     includeAgentToolingSection: !isHuman,
     includeToolCallStyleFallback: !isHuman,
     includeCliQuickReference: !isHuman,

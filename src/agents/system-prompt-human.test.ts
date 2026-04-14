@@ -25,6 +25,17 @@ describe("resolvePersonaPromptPolicy", () => {
     expect(p.includeWorkspaceBootstrapHeaders).toBe(false);
     expect(p.includeModelAliasSection).toBe(false);
     expect(p.includeMessagingOrchestration).toBe(false);
+    expect(p.includeSafetySection).toBe(false);
+    expect(p.includeWorkspaceSection).toBe(false);
+    expect(p.includeDateTimeSection).toBe(false);
+    expect(p.includeSessionStatusInlineHint).toBe(false);
+    expect(p.includeMessagingSection).toBe(false);
+    expect(p.includeProjectContextBoilerplate).toBe(false);
+    expect(p.includeGenericContextFiles).toBe(false);
+    expect(p.includePromptCacheBoundary).toBe(false);
+    expect(p.includeDynamicContextFiles).toBe(false);
+    expect(p.includeHeartbeatSection).toBe(false);
+    expect(p.includeRuntimeFooter).toBe(false);
   });
 
   it("enables agent scaffold flags for agent or unset", () => {
@@ -45,6 +56,17 @@ describe("resolvePersonaPromptPolicy", () => {
       expect(p.includeWorkspaceBootstrapHeaders).toBe(true);
       expect(p.includeModelAliasSection).toBe(true);
       expect(p.includeMessagingOrchestration).toBe(true);
+      expect(p.includeSafetySection).toBe(true);
+      expect(p.includeWorkspaceSection).toBe(true);
+      expect(p.includeDateTimeSection).toBe(true);
+      expect(p.includeSessionStatusInlineHint).toBe(true);
+      expect(p.includeMessagingSection).toBe(true);
+      expect(p.includeProjectContextBoilerplate).toBe(true);
+      expect(p.includeGenericContextFiles).toBe(true);
+      expect(p.includePromptCacheBoundary).toBe(true);
+      expect(p.includeDynamicContextFiles).toBe(true);
+      expect(p.includeHeartbeatSection).toBe(true);
+      expect(p.includeRuntimeFooter).toBe(true);
     }
   });
 });

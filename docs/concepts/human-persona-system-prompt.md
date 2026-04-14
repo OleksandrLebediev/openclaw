@@ -47,11 +47,20 @@ These blocks are **not** inserted into the system prompt when `personaMode` is
 | **`## Documentation`**                             | OpenClaw docs links and `openclaw status` hints. Omitted for human.                                                                                                                                                                                                                                                                                  |
 | **`## Model Aliases`**                             | Alias picker lines when configured. Omitted for human.                                                                                                                                                                                                                                                                                               |
 | **`## Reply Tags`**                                | Quote/reply tag mechanics. Omitted for human.                                                                                                                                                                                                                                                                                                        |
-| **`## Silent Replies`**                            | Long `NO_REPLY` rules block (delivery still described under `### message tool` when `message` exists). Omitted for human.                                                                                                                                                                                                                            |
-| **`## Workspace Files (injected)`** boilerplate    | The injected-files header before project context. Omitted for human (project files still appear under **Project Context**).                                                                                                                                                                                                                          |
-| **Workspace “file ops” line**                      | Default text about global workspace for read/write/exec. Replaced with a short persona-context line for human.                                                                                                                                                                                                                                       |
-| **`## Messaging`** cross-session lines             | `sessions_send` / `subagents` bullets. Omitted for human; routing line + human-safe completion/routing hints remain when not in minimal mode.                                                                                                                                                                                                        |
-| **Runtime `/reasoning` hint**                      | Trailing slash-command hint after the Runtime line. Omitted for human.                                                                                                                                                                                                                                                                               |
+| **`## Silent Replies`**                            | Long `NO_REPLY` rules block. Omitted for human.                                                                                                                                                                                                                                                                                                      |
+| **`## Workspace Files (injected)`** boilerplate    | The injected-files header before project context. Omitted for human (files use compact `## <path>` sections instead).                                                                                                                                                                                                                                |
+| **`## Messaging`** (entire section)                | Channel routing, `### message tool`, `NO_REPLY`, and inline-button hints. Omitted for human so delivery mechanics stay out of the persona system string (tools remain in the structured tool payload).                                                                                                                                               |
+| **`## Safety`**                                    | Long constitution-style block. Omitted for human; persona-specific boundaries normally live in workspace files such as `HUMAN.md`.                                                                                                                                                                                                                   |
+| **`## Workspace`**                                 | Working-directory line and workspace note. Omitted for human.                                                                                                                                                                                                                                                                                        |
+| **`## Current Date & Time`**                       | Time-zone line when configured. Omitted for human.                                                                                                                                                                                                                                                                                                   |
+| **`session_status` inline hint**                   | The line suggesting `session_status` for clock queries. Omitted for human.                                                                                                                                                                                                                                                                           |
+| **`# Project Context` boilerplate**                | Heading plus “files have been loaded” / SOUL guidance intro. Omitted for human; injected files are still appended as compact per-file `## <path>` blocks only.                                                                                                                                                                                       |
+| **`USER.md` / `TOOLS.md` / `BOOTSTRAP.md`**        | Generic workspace bootstrap copies when present in context. Stripped from the human system string (other injected files such as `SOUL.md` / `IDENTITY.md` / `HUMAN.md` remain).                                                                                                                                                                      |
+| **`<!-- OPENCLAW_CACHE_BOUNDARY -->`**             | Cache seam between stable and dynamic context. Omitted for human (stable + dynamic split is disabled for the persona system string).                                                                                                                                                                                                                 |
+| **Dynamic project context**                        | Volatile files such as `HEARTBEAT.md` after the cache boundary. Omitted for human.                                                                                                                                                                                                                                                                   |
+| **`## Heartbeats`**                                | Heartbeat poll instructions when a heartbeat prompt is configured. Omitted for human.                                                                                                                                                                                                                                                                |
+| **`## Runtime`**                                   | Factual runtime summary (`host`, `repo`, model, etc.). Omitted for human.                                                                                                                                                                                                                                                                            |
+| **Runtime `/reasoning` hint**                      | Trailing slash-command hint after the Runtime line. Omitted for human (the Runtime block itself is also omitted).                                                                                                                                                                                                                                    |
 | **OpenAI GPT‑5 overlay** (bundled OpenAI provider) | For `openai` / `openai-codex` models whose id starts with `gpt-5`, the provider plugin normally injects `stablePrefix` (GPT‑5 output contract + punctuation), `execution_bias`, and optional `interaction_style`. For human persona the **entire** contribution is skipped so none of that text is added. See `extensions/openai/prompt-overlay.ts`. |
 
 Human mode still receives tools through the normal structured tool payload, but
@@ -62,22 +71,17 @@ unless the run uses an explicit `toolsAllow` list, is a memory flush
 broader tool surface is required. The system string also drops extra
 orchestrator-style prose as described above.
 
-## What is unchanged (high level)
+## What typically remains (high level)
 
-Human mode is **not** `"minimal"` prompt mode, but it still trims a larger set of
-assistant and product scaffolding than `"agent"`. Sections that typically
-**remain** (unless `promptMode` is `minimal` / `none` or other settings apply)
-include:
+Human mode is **not** `"minimal"` prompt mode, but it strips **more** assistant and
+product scaffolding than `"agent"`. What usually **remains** in the system string
+(unless `promptMode` is `minimal` / `none` or other settings apply):
 
-- **`## Safety`**
-- **`## Workspace`** (path line + the shorter human workspace note)
-- **`## Current Date & Time`** when a time zone is configured (and the
-  `session_status` hint when that tool is available)
-- **Skills catalog** text only (no `## Skills (mandatory)` block)
-- **A shorter `## Messaging`** block (no `sessions_send` / `subagents` lines)
-- **Memory**, **heartbeats** (when configured), **runtime** line (without the
-  `/reasoning` footer), and **project context** from injected workspace files
-  (`SOUL.md`, `HUMAN.md`, etc.)
+- **Identity opener** (human line pointing at `SOUL.md` / `IDENTITY.md`)
+- **Skills catalog** text only when configured (no `## Skills (mandatory)` block)
+- **Memory** sections when the configured tool surface includes memory tools
+- **Injected workspace files** as compact `## <path>` sections, excluding generic
+  bootstrap copies (`USER.md`, `TOOLS.md`, `BOOTSTRAP.md`)
 
 Policy flags live on `resolvePersonaPromptPolicy` in `src/agents/system-prompt-human.ts`.
 

@@ -123,21 +123,82 @@ export function formatUtcOffsetLabelForConfigValue(value: string, when: Date): s
   }
 }
 
-function buildTimezoneOffsetMemo(when: Date) {
-  const memo = new Map<string, string>();
-  return (configValue: string): string => {
-    let cached = memo.get(configValue);
-    if (cached === undefined) {
-      cached = formatUtcOffsetLabelForConfigValue(configValue, when);
-      memo.set(configValue, cached);
-    }
-    return cached;
-  };
+/**
+ * Converts `Intl` `longOffset` text (e.g. `GMT-05:00`, `GMT+5`) to Windows-style `(UTC-05:00)`.
+ */
+export function gmtLongOffsetToUtcParen(rawLongOffset: string): string {
+  const t = rawLongOffset.trim();
+  if (/^GMT$/i.test(t)) {
+    return "(UTC+00:00)";
+  }
+  const m = /^GMT(?<sign>[+-])(?<h>\d{1,2})(?::(?<min>\d{2}))?$/i.exec(t);
+  if (!m?.groups?.sign) {
+    return "";
+  }
+  const sign = m.groups.sign;
+  const hNum = Number(m.groups.h);
+  const minRaw = m.groups.min ?? "00";
+  if (!Number.isFinite(hNum)) {
+    return "";
+  }
+  const hh = String(hNum).padStart(2, "0");
+  const mm = minRaw.padStart(2, "0");
+  return `(UTC${sign}${hh}:${mm})`;
 }
 
-function timezoneSelectLabel(configValue: string, offsetOf: (v: string) => string): string {
-  const off = offsetOf(configValue);
-  return off ? `${configValue} (${off})` : configValue;
+/** `(UTC±HH:MM)` for an IANA id (or `local` → host zone) at `when` (DST-aware). */
+export function formatUtcOffsetParenUtc(value: string, when: Date): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  const resolved =
+    trimmed === "local" ? (Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC") : trimmed;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: resolved,
+      timeZoneName: "longOffset",
+    }).formatToParts(when);
+    const raw = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+    return gmtLongOffsetToUtcParen(raw);
+  } catch {
+    return "";
+  }
+}
+
+function formatTimeZoneGenericNameEn(iana: string, when: Date): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: iana,
+      timeZoneName: "longGeneric",
+    }).formatToParts(when);
+    return parts.find((p) => p.type === "timeZoneName")?.value?.trim() || iana;
+  } catch {
+    return iana;
+  }
+}
+
+/**
+ * Dropdown label similar to Windows: `(UTC-05:00) Eastern Time` (offset + generic zone name).
+ * `local` resolves the host zone and appends ` (local)`.
+ */
+export function formatTimeZoneSelectLabel(configValue: string, when: Date): string {
+  const trimmed = configValue.trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (trimmed === "local") {
+    const host = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC";
+    const off = formatUtcOffsetParenUtc("local", when);
+    const name = formatTimeZoneGenericNameEn(host, when);
+    return off ? `${off} ${name} (local)` : `${name} (local)`;
+  }
+  const off = formatUtcOffsetParenUtc(trimmed, when);
+  const name = formatTimeZoneGenericNameEn(trimmed, when);
+  if (!off) {
+    return name;
+  }
+  return `${off} ${name}`;
 }
 
 function resolveAvailability(
@@ -289,12 +350,16 @@ export function renderAgentAvailability(params: {
     timezoneValue !== "" && timezoneValue !== "local" && !ianaZoneSet.has(timezoneValue);
 
   const offsetWhen = new Date();
-  const offsetOf = buildTimezoneOffsetMemo(offsetWhen);
-  const localOffset = offsetOf("local");
-  const localOptionLabel = localOffset
-    ? `Local (host timezone) (${localOffset})`
-    : "Local (host timezone)";
-  const customTzOffset = showCustomTimezoneOption ? offsetOf(timezoneValue) : "";
+  const timezoneOptionLabelMemo = new Map<string, string>();
+  const timezoneOptionLabel = (z: string): string => {
+    let cached = timezoneOptionLabelMemo.get(z);
+    if (cached === undefined) {
+      cached = formatTimeZoneSelectLabel(z, offsetWhen);
+      timezoneOptionLabelMemo.set(z, cached);
+    }
+    return cached;
+  };
+  const localOptionLabel = formatTimeZoneSelectLabel("local", offsetWhen);
 
   return html`
     <div class="availability-panel">
@@ -328,7 +393,8 @@ export function renderAgentAvailability(params: {
         <div class="card-sub">
           All scheduling windows are evaluated in this timezone.
           ${defaults?.timezone
-            ? html` Default: <code>${timezoneSelectLabel(defaults.timezone, offsetOf)}</code>.`
+            ? html` Default:
+                <code>${formatTimeZoneSelectLabel(defaults.timezone, offsetWhen)}</code>.`
             : nothing}
         </div>
         <label class="field availability-field-block">
@@ -352,18 +418,71 @@ export function renderAgentAvailability(params: {
             </option>
             ${showCustomTimezoneOption
               ? html`<option value=${timezoneValue} ?selected=${true}>
-                  ${customTzOffset
-                    ? `${timezoneValue} (${customTzOffset}) (from config)`
-                    : `${timezoneValue} (from config)`}
+                  ${formatTimeZoneSelectLabel(timezoneValue, offsetWhen)} (from config)
                 </option>`
               : nothing}
             ${ianaZones.map(
               (z) => html`<option value=${z} ?selected=${z === timezoneValue}>
-                ${timezoneSelectLabel(z, offsetOf)}
+                ${timezoneOptionLabel(z)}
               </option>`,
             )}
           </select>
         </label>
+      </section>
+
+      <!-- Extra random delay (after reading) -->
+      <section class="card">
+        <div class="card-title">Extra Random Delay</div>
+        <div class="card-sub">
+          Optional uniform random wait after the reading delay on every inbound message (seconds).
+          Set min and/or max; unset fields clear that bound.
+        </div>
+        <div class="availability-row availability-field-block">
+          <label class="field field--inline">
+            <span>Min extra delay (sec)</span>
+            <input
+              type="number"
+              class="input--sm"
+              min="0"
+              step="1"
+              placeholder="0"
+              .value=${randomDelay.minMs !== undefined
+                ? String(Math.round(randomDelay.minMs / 1000))
+                : ""}
+              ?disabled=${disabled}
+              @change=${(e: Event) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                if (!Number.isNaN(v) && v >= 0) {
+                  patch(["randomDelay", "minMs"], Math.round(v * 1000));
+                } else {
+                  remove(["randomDelay", "minMs"]);
+                }
+              }}
+            />
+          </label>
+          <label class="field field--inline">
+            <span>Max extra delay (sec)</span>
+            <input
+              type="number"
+              class="input--sm"
+              min="0"
+              step="1"
+              placeholder="3"
+              .value=${randomDelay.maxMs !== undefined
+                ? String(Math.round(randomDelay.maxMs / 1000))
+                : ""}
+              ?disabled=${disabled}
+              @change=${(e: Event) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                if (!Number.isNaN(v) && v >= 0) {
+                  patch(["randomDelay", "maxMs"], Math.round(v * 1000));
+                } else {
+                  remove(["randomDelay", "maxMs"]);
+                }
+              }}
+            />
+          </label>
+        </div>
       </section>
 
       <!-- Inactive windows (list) -->
@@ -661,61 +780,6 @@ export function renderAgentAvailability(params: {
                   patch(["readingSpeed", "maxMs"], Math.round(v * 1000));
                 } else {
                   remove(["readingSpeed", "maxMs"]);
-                }
-              }}
-            />
-          </label>
-        </div>
-      </section>
-
-      <!-- Extra random delay (after reading) -->
-      <section class="card">
-        <div class="card-title">Extra Random Delay</div>
-        <div class="card-sub">
-          Optional uniform random wait after the reading delay on every inbound message (seconds).
-          Set min and/or max; unset fields clear that bound.
-        </div>
-        <div class="availability-row availability-field-block">
-          <label class="field field--inline">
-            <span>Min extra delay (sec)</span>
-            <input
-              type="number"
-              class="input--sm"
-              min="0"
-              step="1"
-              placeholder="0"
-              .value=${randomDelay.minMs !== undefined
-                ? String(Math.round(randomDelay.minMs / 1000))
-                : ""}
-              ?disabled=${disabled}
-              @change=${(e: Event) => {
-                const v = Number((e.target as HTMLInputElement).value);
-                if (!Number.isNaN(v) && v >= 0) {
-                  patch(["randomDelay", "minMs"], Math.round(v * 1000));
-                } else {
-                  remove(["randomDelay", "minMs"]);
-                }
-              }}
-            />
-          </label>
-          <label class="field field--inline">
-            <span>Max extra delay (sec)</span>
-            <input
-              type="number"
-              class="input--sm"
-              min="0"
-              step="1"
-              placeholder="3"
-              .value=${randomDelay.maxMs !== undefined
-                ? String(Math.round(randomDelay.maxMs / 1000))
-                : ""}
-              ?disabled=${disabled}
-              @change=${(e: Event) => {
-                const v = Number((e.target as HTMLInputElement).value);
-                if (!Number.isNaN(v) && v >= 0) {
-                  patch(["randomDelay", "maxMs"], Math.round(v * 1000));
-                } else {
-                  remove(["randomDelay", "maxMs"]);
                 }
               }}
             />

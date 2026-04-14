@@ -1,7 +1,10 @@
 import { render } from "lit";
 import { describe, expect, it, vi } from "vitest";
 import {
+  formatTimeZoneSelectLabel,
   formatUtcOffsetLabelForConfigValue,
+  formatUtcOffsetParenUtc,
+  gmtLongOffsetToUtcParen,
   parseGmtOffsetToCompact,
   renderAgentAvailability,
 } from "./agents-panels-availability.ts";
@@ -26,6 +29,34 @@ describe("formatUtcOffsetLabelForConfigValue", () => {
     const when = new Date("2024-06-15T12:00:00Z");
     expect(formatUtcOffsetLabelForConfigValue("UTC", when)).toBe("+0");
     expect(formatUtcOffsetLabelForConfigValue("Europe/Kyiv", when)).toBe("+3");
+  });
+});
+
+describe("gmtLongOffsetToUtcParen", () => {
+  it("maps GMT to UTC+00:00", () => {
+    expect(gmtLongOffsetToUtcParen("GMT")).toBe("(UTC+00:00)");
+  });
+  it("maps GMT-05:00", () => {
+    expect(gmtLongOffsetToUtcParen("GMT-05:00")).toBe("(UTC-05:00)");
+  });
+  it("maps GMT+5:30", () => {
+    expect(gmtLongOffsetToUtcParen("GMT+5:30")).toBe("(UTC+05:30)");
+  });
+});
+
+describe("formatUtcOffsetParenUtc", () => {
+  it("returns DST-aware offset for New York in winter", () => {
+    const when = new Date("2024-01-15T18:00:00Z");
+    expect(formatUtcOffsetParenUtc("America/New_York", when)).toBe("(UTC-05:00)");
+  });
+});
+
+describe("formatTimeZoneSelectLabel", () => {
+  it("combines UTC paren and generic name for an IANA zone", () => {
+    const when = new Date("2024-01-15T18:00:00Z");
+    const label = formatTimeZoneSelectLabel("America/New_York", when);
+    expect(label).toMatch(/^\(UTC-05:00\) /);
+    expect(label.length).toBeGreaterThan("(UTC-05:00) ".length);
   });
 });
 
@@ -89,7 +120,9 @@ describe("renderAgentAvailability", () => {
     );
     await Promise.resolve();
 
-    expect(container.textContent).toContain("America/Los_Angeles");
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/\(UTC[^)]+\)/);
+    expect(text).toMatch(/Pacific Time|Los Angeles/i);
   });
 
   it("calls onAvailabilityPatch when timezone changes", async () => {

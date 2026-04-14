@@ -255,6 +255,8 @@ Suggested `.gitignore` starter:
 
 When `personaMode` is `"human"`, `AGENTS.md` is excluded from the bootstrap context and `HUMAN.md` is loaded in its place. The two files are mutually exclusive — only one is active per session.
 
+For how the **composed system prompt string** changes in human mode (sections OpenClaw omits, OpenAI overlay behavior), see [Human persona system prompt](/concepts/human-persona-system-prompt).
+
 ### Global default
 
 ```bash

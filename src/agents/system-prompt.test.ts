@@ -142,7 +142,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(prompt).toContain("Subagent details");
   });
 
-  it("omits ## Tooling for human persona mode but keeps subsequent agent guidance", () => {
+  it("omits ## Tooling and ## Tool Call Style for human persona mode", () => {
     const human = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",
       personaMode: "human",
@@ -152,8 +152,10 @@ describe("buildAgentSystemPrompt", () => {
     expect(human).not.toContain(
       "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
     );
+    expect(human).not.toContain("## Tool Call Style");
+    expect(human).not.toContain("Never execute /approve through exec or any other shell/tool path");
     expect(human).toContain("You are a real person — not an AI, not a bot, not an assistant.");
-    expect(human).toContain("## Tool Call Style");
+    expect(human).toContain("## Execution Bias");
 
     const agent = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",
@@ -164,6 +166,7 @@ describe("buildAgentSystemPrompt", () => {
     expect(agent).toContain(
       "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
     );
+    expect(agent).toContain("## Tool Call Style");
   });
 
   it("includes skills in minimal prompt mode when skillsPrompt is provided (cron regression)", () => {

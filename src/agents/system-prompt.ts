@@ -494,10 +494,12 @@ export function buildAgentSystemPrompt(params: {
     return identityLine;
   }
 
+  const isHumanPersona = params.personaMode === "human";
+
   // Human persona: keep tools available via structured definitions, but omit the
   // heavy "## Tooling" guidance block so the system prompt reads less like an agent scaffold.
   const toolingSectionLines: string[] =
-    params.personaMode === "human"
+    isHumanPersona
       ? []
       : [
           "## Tooling",
@@ -545,25 +547,27 @@ export function buildAgentSystemPrompt(params: {
       override: providerSectionOverrides.interaction_style,
       fallback: [],
     }),
-    ...buildOverridablePromptSection({
-      override: providerSectionOverrides.tool_call_style,
-      fallback: [
-        "## Tool Call Style",
-        "Default: do not narrate routine, low-risk tool calls (just call the tool).",
-        "Narrate only when it helps: multi-step work, complex/challenging problems, sensitive actions (e.g., deletions), or when the user explicitly asks.",
-        "Keep narration brief and value-dense; avoid repeating obvious steps.",
-        "Use plain human language for narration unless in a technical context.",
-        "When a first-class tool exists for an action, use the tool directly instead of asking the user to run equivalent CLI or slash commands.",
-        buildExecApprovalPromptGuidance({
-          runtimeChannel: params.runtimeInfo?.channel,
-          inlineButtonsEnabled,
-        }),
-        "Never execute /approve through exec or any other shell/tool path; /approve is a user-facing approval command, not a shell command.",
-        "Treat allow-once as single-command only: if another elevated command needs approval, request a fresh /approve and do not claim prior approval covered it.",
-        "When approvals are required, preserve and show the full command/script exactly as provided (including chained operators like &&, ||, |, ;, or multiline shells) so the user can approve what will actually run.",
-        "",
-      ],
-    }),
+    ...(isHumanPersona
+      ? []
+      : buildOverridablePromptSection({
+          override: providerSectionOverrides.tool_call_style,
+          fallback: [
+            "## Tool Call Style",
+            "Default: do not narrate routine, low-risk tool calls (just call the tool).",
+            "Narrate only when it helps: multi-step work, complex/challenging problems, sensitive actions (e.g., deletions), or when the user explicitly asks.",
+            "Keep narration brief and value-dense; avoid repeating obvious steps.",
+            "Use plain human language for narration unless in a technical context.",
+            "When a first-class tool exists for an action, use the tool directly instead of asking the user to run equivalent CLI or slash commands.",
+            buildExecApprovalPromptGuidance({
+              runtimeChannel: params.runtimeInfo?.channel,
+              inlineButtonsEnabled,
+            }),
+            "Never execute /approve through exec or any other shell/tool path; /approve is a user-facing approval command, not a shell command.",
+            "Treat allow-once as single-command only: if another elevated command needs approval, request a fresh /approve and do not claim prior approval covered it.",
+            "When approvals are required, preserve and show the full command/script exactly as provided (including chained operators like &&, ||, |, ;, or multiline shells) so the user can approve what will actually run.",
+            "",
+          ],
+        })),
     ...buildOverridablePromptSection({
       override: providerSectionOverrides.execution_bias,
       fallback: buildExecutionBiasSection({

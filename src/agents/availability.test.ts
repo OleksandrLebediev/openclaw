@@ -3,6 +3,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import type { AgentTimeWindow } from "../config/types.base.js";
 import {
   computeBusyDelayMs,
+  computeRandomDelayMs,
   computeReadingDelayMs,
   computeWritingDelayMs,
   hasAvailabilityWindow,
@@ -217,6 +218,30 @@ describe("computeBusyDelayMs", () => {
   });
 });
 
+describe("computeRandomDelayMs", () => {
+  it("returns 0 when config is absent", () => {
+    expect(computeRandomDelayMs(undefined)).toBe(0);
+  });
+
+  it("returns 0 when object has no bounds", () => {
+    expect(computeRandomDelayMs({})).toBe(0);
+  });
+
+  it("uses max = min when only min is set", () => {
+    expect(computeRandomDelayMs({ minMs: 42 })).toBe(42);
+  });
+
+  it("uses min = 0 when only max is set", () => {
+    const ms = computeRandomDelayMs({ maxMs: 100 });
+    expect(ms).toBeGreaterThanOrEqual(0);
+    expect(ms).toBeLessThanOrEqual(100);
+  });
+
+  it("returns min when max <= min", () => {
+    expect(computeRandomDelayMs({ minMs: 7, maxMs: 3 })).toBe(7);
+  });
+});
+
 describe("normalizeInactiveWindows", () => {
   it("returns empty list for undefined", () => {
     expect(normalizeInactiveWindows(undefined)).toEqual([]);
@@ -290,6 +315,16 @@ describe("resolveAgentAvailabilityConfig", () => {
     expect(result?.writingSpeed?.wpm).toBe(200);
     expect(result?.writingSpeed?.minMs).toBe(2000);
     expect(result?.writingSpeed?.maxMs).toBe(15000);
+  });
+
+  it("merges randomDelay fields from defaults when per-agent has partial override", () => {
+    const cfg = makeCfg(
+      { randomDelay: { minMs: 0, maxMs: 5000 } },
+      { randomDelay: { maxMs: 2000 } },
+    );
+    const result = resolveAgentAvailabilityConfig(cfg, "test-agent");
+    expect(result?.randomDelay?.minMs).toBe(0);
+    expect(result?.randomDelay?.maxMs).toBe(2000);
   });
 
   it("inherits busyWindows from defaults when agent has none", () => {

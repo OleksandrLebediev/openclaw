@@ -22,6 +22,7 @@ If you’re looking for conceptual questions (not “something broke”):
 
 ## Environment and debugging
 
+- **Backup and cloud (Git vs Drive, rclone):** [Backup and cloud](/help/backup-and-cloud)
 - **Environment variables:** [Where OpenClaw loads env vars and precedence](/help/environment)
 - **Debugging:** [Watch mode, raw streams, and dev profile](/help/debugging)
 - **Testing:** [Test suites, live tests, and Docker runners](/help/testing)

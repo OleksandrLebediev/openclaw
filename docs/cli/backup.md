@@ -1,14 +1,18 @@
 ---
-summary: "CLI reference for `openclaw backup` (create local backup archives)"
+
+## summary: "CLI reference for `openclaw backup` (create local backup archives)"
+
 read_when:
-  - You want a first-class backup archive for local OpenClaw state
-  - You want to preview which paths would be included before reset or uninstall
-title: "backup"
----
+
+- You want a first-class backup archive for local OpenClaw state
+- You want to preview which paths would be included before reset or uninstall
+  title: "backup"
 
 # `openclaw backup`
 
 Create a local backup archive for OpenClaw state, config, auth profiles, channel/provider credentials, sessions, and optionally workspaces.
+
+For **off-site** workflows (private git vs cloud, Google Drive via rclone, encryption, and systemd examples), see [Backup and cloud](/help/backup-and-cloud).
 
 ```bash
 openclaw backup create

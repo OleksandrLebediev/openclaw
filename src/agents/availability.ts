@@ -54,6 +54,13 @@ export function resolveAgentAvailabilityConfig(
             maxMs: overrides?.busyDelay?.maxMs ?? defaults?.busyDelay?.maxMs,
           }
         : undefined,
+    randomDelay:
+      overrides?.randomDelay || defaults?.randomDelay
+        ? {
+            minMs: overrides?.randomDelay?.minMs ?? defaults?.randomDelay?.minMs,
+            maxMs: overrides?.randomDelay?.maxMs ?? defaults?.randomDelay?.maxMs,
+          }
+        : undefined,
     readingSpeed:
       overrides?.readingSpeed || defaults?.readingSpeed
         ? {
@@ -289,6 +296,27 @@ export function computeWritingDelayMs(
 export function computeBusyDelayMs(config: AgentAvailabilityConfig["busyDelay"]): number {
   const min = config?.minMs ?? DEFAULT_BUSY_DELAY_MIN_MS;
   const max = config?.maxMs ?? DEFAULT_BUSY_DELAY_MAX_MS;
+  if (max <= min) {
+    return min;
+  }
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+/**
+ * Optional extra random delay after reading speed. Disabled when `config` is absent or when
+ * neither `minMs` nor `maxMs` is set (empty object).
+ */
+export function computeRandomDelayMs(config: AgentAvailabilityConfig["randomDelay"]): number {
+  if (!config) {
+    return 0;
+  }
+  const hasMin = config.minMs !== undefined;
+  const hasMax = config.maxMs !== undefined;
+  if (!hasMin && !hasMax) {
+    return 0;
+  }
+  const min = config.minMs ?? 0;
+  const max = config.maxMs ?? min;
   if (max <= min) {
     return min;
   }

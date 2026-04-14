@@ -21,6 +21,10 @@ Use these when a task is clearly tied to a script; otherwise prefer the CLI.
 
 Auth monitoring is covered in [Authentication](/gateway/authentication). The scripts under `scripts/` are optional extras for systemd/Termux phone workflows.
 
+## Backup examples
+
+- **`scripts/backup-rclone-drive.example.sh`** — template for `openclaw backup create` plus optional `rclone` upload. See [Backup and cloud](/help/backup-and-cloud).
+
 ## When adding scripts
 
 - Keep scripts focused and documented.

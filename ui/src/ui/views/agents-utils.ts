@@ -172,6 +172,7 @@ export type AgentAvailabilityConfig = {
   busyWindows?: AgentAvailabilityWindow[];
   offlineMode?: "queue" | "immediate";
   busyDelay?: { minMs?: number; maxMs?: number };
+  randomDelay?: { minMs?: number; maxMs?: number };
   readingSpeed?: { wpm?: number; minMs?: number; maxMs?: number };
   writingSpeed?: { wpm?: number; minMs?: number; maxMs?: number };
 };

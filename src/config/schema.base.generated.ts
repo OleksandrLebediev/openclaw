@@ -4791,6 +4791,29 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                     additionalProperties: false,
                     title: "Busy Window Delay",
                   },
+                  randomDelay: {
+                    type: "object",
+                    properties: {
+                      minMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Random Delay Min (ms)",
+                        description:
+                          "Minimum extra random delay in ms after the reading-speed delay on each inbound message (optional). Omit both randomDelay bounds to disable.",
+                      },
+                      maxMs: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 9007199254740991,
+                        title: "Random Delay Max (ms)",
+                        description:
+                          "Maximum extra random delay in ms after the reading-speed delay on each inbound message (optional). Omit both randomDelay bounds to disable.",
+                      },
+                    },
+                    additionalProperties: false,
+                    title: "Extra Random Delay",
+                  },
                   readingSpeed: {
                     type: "object",
                     properties: {
@@ -6260,6 +6283,29 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
                       },
                       additionalProperties: false,
                       title: "Busy Window Delay",
+                    },
+                    randomDelay: {
+                      type: "object",
+                      properties: {
+                        minMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Random Delay Min (ms)",
+                          description:
+                            "Per-agent minimum extra random delay in ms after the reading-speed delay.",
+                        },
+                        maxMs: {
+                          type: "integer",
+                          minimum: 0,
+                          maximum: 9007199254740991,
+                          title: "Random Delay Max (ms)",
+                          description:
+                            "Per-agent maximum extra random delay in ms after the reading-speed delay.",
+                        },
+                      },
+                      additionalProperties: false,
+                      title: "Extra Random Delay",
                     },
                     readingSpeed: {
                       type: "object",
@@ -25629,6 +25675,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
       help: "Maximum extra delay in ms applied when a message arrives during a busy window (default: 300000).",
       tags: ["performance"],
     },
+    "agents.defaults.availability.randomDelay": {
+      label: "Extra Random Delay",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.randomDelay.minMs": {
+      label: "Random Delay Min (ms)",
+      help: "Minimum extra random delay in ms after the reading-speed delay on each inbound message (optional). Omit both randomDelay bounds to disable.",
+      tags: ["advanced"],
+    },
+    "agents.defaults.availability.randomDelay.maxMs": {
+      label: "Random Delay Max (ms)",
+      help: "Maximum extra random delay in ms after the reading-speed delay on each inbound message (optional). Omit both randomDelay bounds to disable.",
+      tags: ["performance"],
+    },
     "agents.defaults.availability.readingSpeed": {
       label: "Reading Speed",
       tags: ["advanced"],
@@ -25735,6 +25795,20 @@ export const GENERATED_BASE_CONFIG_SCHEMA: BaseConfigSchemaResponse = {
     "agents.list[].availability.busyDelay.maxMs": {
       label: "Busy Delay Max (ms)",
       help: "Per-agent maximum busy window delay in ms.",
+      tags: ["performance"],
+    },
+    "agents.list[].availability.randomDelay": {
+      label: "Extra Random Delay",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.randomDelay.minMs": {
+      label: "Random Delay Min (ms)",
+      help: "Per-agent minimum extra random delay in ms after the reading-speed delay.",
+      tags: ["advanced"],
+    },
+    "agents.list[].availability.randomDelay.maxMs": {
+      label: "Random Delay Max (ms)",
+      help: "Per-agent maximum extra random delay in ms after the reading-speed delay.",
       tags: ["performance"],
     },
     "agents.list[].availability.readingSpeed": {

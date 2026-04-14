@@ -6,6 +6,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 
 ### Changes
 
+- Agents/availability: add optional `randomDelay` (`minMs` / `maxMs`) for an extra uniform random inbound delay after the reading-speed wait. Control UI **Agents → Availability** includes an Extra random delay section.
 - Agents/availability: add optional `writingSpeed` (same shape as `readingSpeed`) for a simulated typing delay before final outbound text is sent, using typing-test words (five characters per word). Control UI **Agents → Availability** includes a Writing speed section.
 - Agents/availability: add `inactiveHours` (preferred) so operators schedule offline time directly; when set it overrides `activeHours`. Control UI **Agents → Availability** edits inactive hours by default.
 - Plugins/webhooks: add a bundled webhook ingress plugin so external automation can create and drive bound TaskFlows through per-route shared-secret endpoints. (#61892) Thanks @mbelinky.

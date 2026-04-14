@@ -2,6 +2,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import { sleep } from "../utils.js";
 import {
   computeBusyDelayMs,
+  computeRandomDelayMs,
   computeReadingDelayMs,
   hasAvailabilityWindow,
   isInTimeWindow,
@@ -32,6 +33,7 @@ export type AvailabilityWaitParams = {
  *      - Else when `activeHours` is set: sleep until the next active window if currently outside it.
  *   3. If message arrives inside a busy window: sleep for a random busy delay.
  *   4. Apply a reading delay proportional to the message length.
+ *   5. If `randomDelay` is set with at least one bound: sleep for a uniform random extra delay.
  *
  * The calling function (dispatchReplyFromConfig) already holds the inbound
  * message in the session transcript, so no messages are lost during the wait.
@@ -99,5 +101,12 @@ export async function applyAvailabilityWait(params: AvailabilityWaitParams): Pro
       );
       await sleep(readMs);
     }
+  }
+
+  // --- Step 4: optional extra random delay (after reading) ---
+  const jitterMs = computeRandomDelayMs(availability.randomDelay);
+  if (jitterMs > 0) {
+    log?.(`[availability] random delay — ${Math.round(jitterMs / 1000)}s`);
+    await sleep(jitterMs);
   }
 }

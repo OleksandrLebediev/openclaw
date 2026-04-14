@@ -1198,6 +1198,10 @@ export const FIELD_HELP: Record<string, string> = {
     "Minimum extra delay in ms applied when a message arrives during a busy window (default: 60000).",
   "agents.defaults.availability.busyDelay.maxMs":
     "Maximum extra delay in ms applied when a message arrives during a busy window (default: 300000).",
+  "agents.defaults.availability.randomDelay.minMs":
+    "Minimum extra random delay in ms after the reading-speed delay on each inbound message (optional). Omit both randomDelay bounds to disable.",
+  "agents.defaults.availability.randomDelay.maxMs":
+    "Maximum extra random delay in ms after the reading-speed delay on each inbound message (optional). Omit both randomDelay bounds to disable.",
   "agents.defaults.availability.readingSpeed.wpm":
     "Words per minute the agent takes to read an incoming message before starting to reply (default: 200). Determines a natural pre-reply pause.",
   "agents.defaults.availability.readingSpeed.minMs":
@@ -1226,6 +1230,10 @@ export const FIELD_HELP: Record<string, string> = {
     "Per-agent offline behavior override (queue or immediate).",
   "agents.list[].availability.busyDelay.minMs": "Per-agent minimum busy window delay in ms.",
   "agents.list[].availability.busyDelay.maxMs": "Per-agent maximum busy window delay in ms.",
+  "agents.list[].availability.randomDelay.minMs":
+    "Per-agent minimum extra random delay in ms after the reading-speed delay.",
+  "agents.list[].availability.randomDelay.maxMs":
+    "Per-agent maximum extra random delay in ms after the reading-speed delay.",
   "agents.list[].availability.readingSpeed.wpm": "Per-agent reading speed in words per minute.",
   "agents.list[].availability.readingSpeed.minMs": "Per-agent minimum reading delay in ms.",
   "agents.list[].availability.readingSpeed.maxMs": "Per-agent maximum reading delay cap in ms.",

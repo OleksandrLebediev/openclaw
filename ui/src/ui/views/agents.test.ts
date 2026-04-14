@@ -213,7 +213,7 @@ describe("renderAgents", () => {
     await Promise.resolve();
 
     expect(container.textContent).toContain("Timezone");
-    expect(container.textContent).toContain("Active Hours");
+    expect(container.textContent).toContain("Inactive windows");
     const tzSelect = container.querySelector<HTMLSelectElement>(
       '[data-testid="availability-timezone"]',
     );

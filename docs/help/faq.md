@@ -1444,7 +1444,7 @@ for usage/billing and raise limits as needed.
     If you need a full restore, back up both the workspace and the state directory
     separately (see the migration question above).
 
-    Docs: [Agent workspace](/concepts/agent-workspace).
+    Docs: [Agent workspace](/concepts/agent-workspace) and [Backup and cloud](/help/backup-and-cloud).
 
   </Accordion>
 

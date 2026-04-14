@@ -91,6 +91,42 @@ describe("applyAvailabilityWait busy windows", () => {
     expect(sleepMock.mock.calls[1]?.[0]).toBe(1000);
   });
 
+  it("applies randomDelay after reading delay when both are set", async () => {
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
+    const cfg = makeCfg({
+      timezone: "UTC",
+      readingSpeed: { wpm: 200, minMs: 1000, maxMs: 15_000 },
+      randomDelay: { minMs: 50, maxMs: 50 },
+    });
+
+    await applyAvailabilityWait({
+      cfg,
+      agentId: "busy-test-agent",
+      inboundText: "one two",
+    });
+
+    expect(sleepMock).toHaveBeenCalledTimes(2);
+    expect(sleepMock.mock.calls[0]?.[0]).toBe(1000);
+    expect(sleepMock.mock.calls[1]?.[0]).toBe(50);
+  });
+
+  it("applies randomDelay without readingSpeed when randomDelay bounds are set", async () => {
+    vi.setSystemTime(new Date("2026-06-15T12:00:00.000Z"));
+    const cfg = makeCfg({
+      timezone: "UTC",
+      randomDelay: { minMs: 33, maxMs: 33 },
+    });
+
+    await applyAvailabilityWait({
+      cfg,
+      agentId: "busy-test-agent",
+      inboundText: "hello",
+    });
+
+    expect(sleepMock).toHaveBeenCalledTimes(1);
+    expect(sleepMock).toHaveBeenCalledWith(33);
+  });
+
   it("chains sleeps when two inactive windows touch (still offline after first ends)", async () => {
     // Sunday 2026-06-14 10:15 UTC — first window [10:00,10:30), second [10:30,11:00) on sun only.
     vi.setSystemTime(new Date("2026-06-14T10:15:00.000Z"));

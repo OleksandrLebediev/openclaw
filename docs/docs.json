@@ -1569,11 +1569,12 @@
               {
                 "group": "Environment and debugging",
                 "pages": [
-                  "help/environment",
+                  "help/backup-and-cloud",
                   "help/debugging",
-                  "help/testing",
+                  "help/environment",
                   "help/remote-probes",
                   "help/scripts",
+                  "help/testing",
                   "debug/node-issue",
                   "diagnostics/flags"
                 ]

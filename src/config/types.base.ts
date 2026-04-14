@@ -133,6 +133,12 @@ export type AgentAvailabilityConfig = {
   offlineMode?: "queue" | "immediate";
   /** Extra random delay applied when inside a busy window. */
   busyDelay?: { minMs?: number; maxMs?: number };
+  /**
+   * Optional extra uniform random delay (ms) after the reading-speed delay on every inbound
+   * message. Set at least one of `minMs` / `maxMs`; omitted bounds default to the other (or 0).
+   * Omit the field entirely to disable.
+   */
+  randomDelay?: { minMs?: number; maxMs?: number };
   /** How fast the agent "reads" an incoming message before starting to reply. */
   readingSpeed?: AgentReadingSpeedConfig;
   /**

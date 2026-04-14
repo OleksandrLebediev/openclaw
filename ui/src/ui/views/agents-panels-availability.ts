@@ -280,6 +280,8 @@ export function renderAgentAvailability(params: {
   // Busy delay
   const busyDelay = avail.busyDelay ?? {};
 
+  const randomDelay = avail.randomDelay ?? {};
+
   const timezoneValue = (avail.timezone ?? "").trim();
   const ianaZones = getSortedIanaTimeZones();
   const ianaZoneSet = new Set(ianaZones);
@@ -659,6 +661,61 @@ export function renderAgentAvailability(params: {
                   patch(["readingSpeed", "maxMs"], Math.round(v * 1000));
                 } else {
                   remove(["readingSpeed", "maxMs"]);
+                }
+              }}
+            />
+          </label>
+        </div>
+      </section>
+
+      <!-- Extra random delay (after reading) -->
+      <section class="card">
+        <div class="card-title">Extra Random Delay</div>
+        <div class="card-sub">
+          Optional uniform random wait after the reading delay on every inbound message (seconds).
+          Set min and/or max; unset fields clear that bound.
+        </div>
+        <div class="availability-row availability-field-block">
+          <label class="field field--inline">
+            <span>Min extra delay (sec)</span>
+            <input
+              type="number"
+              class="input--sm"
+              min="0"
+              step="1"
+              placeholder="0"
+              .value=${randomDelay.minMs !== undefined
+                ? String(Math.round(randomDelay.minMs / 1000))
+                : ""}
+              ?disabled=${disabled}
+              @change=${(e: Event) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                if (!Number.isNaN(v) && v >= 0) {
+                  patch(["randomDelay", "minMs"], Math.round(v * 1000));
+                } else {
+                  remove(["randomDelay", "minMs"]);
+                }
+              }}
+            />
+          </label>
+          <label class="field field--inline">
+            <span>Max extra delay (sec)</span>
+            <input
+              type="number"
+              class="input--sm"
+              min="0"
+              step="1"
+              placeholder="3"
+              .value=${randomDelay.maxMs !== undefined
+                ? String(Math.round(randomDelay.maxMs / 1000))
+                : ""}
+              ?disabled=${disabled}
+              @change=${(e: Event) => {
+                const v = Number((e.target as HTMLInputElement).value);
+                if (!Number.isNaN(v) && v >= 0) {
+                  patch(["randomDelay", "maxMs"], Math.round(v * 1000));
+                } else {
+                  remove(["randomDelay", "maxMs"]);
                 }
               }}
             />

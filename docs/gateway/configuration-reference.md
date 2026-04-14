@@ -1258,9 +1258,9 @@ See [Streaming](/concepts/streaming) for behavior + chunking details.
 
 ### `agents.defaults.availability` (optional)
 
-Optional **agent-side** reply timing: inactive or active hours, busy windows, a simulated reading delay before the model run starts, and an optional outbound **writing** delay before the final text is delivered. All time windows are evaluated in `availability.timezone` (IANA ID or `"local"`). Omit the whole object to disable.
+Optional **agent-side** reply timing: inactive or active hours, busy windows, a simulated reading delay before the model run starts, an optional extra random delay after that reading delay, and an optional outbound **writing** delay before the final text is delivered. All time windows are evaluated in `availability.timezone` (IANA ID or `"local"`). Omit the whole object to disable.
 
-- **Per-agent:** set `agents.list[].availability` on the matching agent entry. Top-level fields (`timezone`, `inactiveHours`, `activeHours`, `busyWindows`, `offlineMode`) use the per-agent value when set, otherwise the default. Nested `busyDelay`, `readingSpeed`, and `writingSpeed` merge key-by-key with defaults (`minMs` / `maxMs`, `wpm` / `minMs` / `maxMs`).
+- **Per-agent:** set `agents.list[].availability` on the matching agent entry. Top-level fields (`timezone`, `inactiveHours`, `activeHours`, `busyWindows`, `offlineMode`) use the per-agent value when set, otherwise the default. Nested `busyDelay`, `randomDelay`, `readingSpeed`, and `writingSpeed` merge key-by-key with defaults (`minMs` / `maxMs`, `wpm` / `minMs` / `maxMs`).
 - **Inbound messages** are written to the session transcript before these waits; if you use `offlineMode: "queue"`, the gateway defers starting the reply until the agent is available again. A restart during an in-memory wait drops only the wait timer, not the stored message.
 
 ```json5
@@ -1281,6 +1281,8 @@ Optional **agent-side** reply timing: inactive or active hours, busy windows, a 
         busyWindows: [{ start: "13:00", end: "16:00", days: ["mon", "tue", "wed", "thu", "fri"] }],
         offlineMode: "queue", // queue | immediate (omit or queue = wait until available)
         busyDelay: { minMs: 60_000, maxMs: 300_000 },
+        // Inbound: uniform random ms after readingSpeed delay (set at least one bound).
+        randomDelay: { minMs: 0, maxMs: 5000 },
         readingSpeed: { wpm: 200, minMs: 2000, maxMs: 30_000 },
         // Outbound: delay before final send; length uses typing-test words (ceil(chars / 5)).
         writingSpeed: { wpm: 40, minMs: 1500, maxMs: 60_000 },
@@ -1295,6 +1297,7 @@ Optional **agent-side** reply timing: inactive or active hours, busy windows, a 
 - `inactiveHours` / `activeHours` / `busyWindows[]` / each inactive window: `start` / `end`: `HH:MM` (24h); `end` is exclusive; use `"24:00"` for end of day. `days`: optional subset of `mon` … `sun`; omit `days` for all days.
 - `offlineMode`: `"queue"` (default) waits until the agent is available again; `"immediate"` ignores inactive/active hours for starting the reply.
 - `busyDelay`: extra random delay (ms) while inside any matching `busyWindows` entry.
+- `randomDelay`: optional extra uniform random delay (ms) after the reading-speed delay on every inbound message. Set at least one of `minMs` / `maxMs`; omit the other to default it to the set bound (or 0 for `minMs` when only `maxMs` is set). Omit `randomDelay` or use an empty object to disable.
 - `readingSpeed`: delay from inbound text length (`wpm`), clamped by `minMs` / `maxMs`.
 - `writingSpeed`: delay before sending the final outbound text. Duration uses the standard typing-test convention: one word equals **five characters** (including spaces), i.e. `ceil(characterCount / 5)` words at `wpm`, then clamped by `minMs` / `maxMs`. Skipped for heartbeats, silent replies, and payloads with no visible text.
 

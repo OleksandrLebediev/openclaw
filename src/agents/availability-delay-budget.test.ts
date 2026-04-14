@@ -13,6 +13,7 @@
  * 2. **Busy** — if any `busyWindows` matches `now` → one `sleep(computeBusyDelayMs(busyDelay))`
  *    (random between min/max unless `max <= min`).
  * 3. **Reading** — if `readingSpeed` is set → one `sleep(computeReadingDelayMs(inboundText, readingSpeed))`.
+ * 4. **Random** — if `randomDelay` sets at least one bound → one `sleep(computeRandomDelayMs(randomDelay))`.
  *
  * When `diagnostics.enabled`, `dispatch-from-config` emits **`reply.availability_timing` /
  * `kind: "inbound_wait"`** with **`waitMs` = wall-clock** for the whole `applyAvailabilityWait`
@@ -35,6 +36,7 @@ import type { OpenClawConfig } from "../config/config.js";
 import { applyAvailabilityWait } from "./availability-wait.js";
 import {
   computeBusyDelayMs,
+  computeRandomDelayMs,
   computeReadingDelayMs,
   computeWritingDelayMs,
 } from "./availability.js";
@@ -140,6 +142,21 @@ describe("availability delay budget — writing parameters → planned ms", () =
   });
 });
 
+describe("availability delay budget — randomDelay range (deterministic)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("uses min..max inclusive when max > min (mock Math.random)", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+    const minMs = 10;
+    const maxMs = 20;
+    const span = maxMs - minMs + 1;
+    const expected = minMs + Math.floor(0.5 * span);
+    expect(computeRandomDelayMs({ minMs, maxMs })).toBe(expected);
+  });
+});
+
 describe("availability delay budget — busyDelay random range (deterministic)", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -196,12 +213,13 @@ describe("availability delay budget — applyAvailabilityWait sleep sequence", (
     expect(sleepMock.mock.calls[0]?.[0]).toBe(plannedRead);
   });
 
-  it("busy window + reading → busy sleep then reading sleep", async () => {
+  it("busy window + reading + randomDelay → three sleeps in order", async () => {
     vi.setSystemTime(new Date("2026-06-15T14:30:00.000Z"));
     const inbound = "one two";
     const readingSpeed = { wpm: 200, minMs: 2000, maxMs: 30_000 };
     const plannedRead = computeReadingDelayMs(inbound, readingSpeed);
     const busyMs = 10;
+    const jitterMs = 5;
 
     await applyAvailabilityWait({
       cfg: cfgWithAvailability({
@@ -209,17 +227,21 @@ describe("availability delay budget — applyAvailabilityWait sleep sequence", (
         busyWindows: [{ start: "13:00", end: "16:00" }],
         busyDelay: { minMs: busyMs, maxMs: busyMs },
         readingSpeed,
+        randomDelay: { minMs: jitterMs, maxMs: jitterMs },
       }),
       agentId: "delay-budget-agent",
       inboundText: inbound,
     });
 
-    expect(sleepMock).toHaveBeenCalledTimes(2);
+    expect(sleepMock).toHaveBeenCalledTimes(3);
     expect(sleepMock.mock.calls[0]?.[0]).toBe(busyMs);
     expect(sleepMock.mock.calls[1]?.[0]).toBe(plannedRead);
+    expect(sleepMock.mock.calls[2]?.[0]).toBe(jitterMs);
     const inboundWallBudget =
-      Number(sleepMock.mock.calls[0]?.[0] ?? 0) + Number(sleepMock.mock.calls[1]?.[0] ?? 0);
-    expect(inboundWallBudget).toBe(busyMs + plannedRead);
+      Number(sleepMock.mock.calls[0]?.[0] ?? 0) +
+      Number(sleepMock.mock.calls[1]?.[0] ?? 0) +
+      Number(sleepMock.mock.calls[2]?.[0] ?? 0);
+    expect(inboundWallBudget).toBe(busyMs + plannedRead + jitterMs);
   });
 
   it("inactive queue wait then reading (two sleeps)", async () => {

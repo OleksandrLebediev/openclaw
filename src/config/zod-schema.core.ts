@@ -535,6 +535,13 @@ export const AgentAvailabilitySchema = z
       })
       .strict()
       .optional(),
+    randomDelay: z
+      .object({
+        minMs: z.number().int().nonnegative().optional(),
+        maxMs: z.number().int().nonnegative().optional(),
+      })
+      .strict()
+      .optional(),
     readingSpeed: AgentReadingSpeedSchema.optional(),
     writingSpeed: AgentReadingSpeedSchema.optional(),
   })

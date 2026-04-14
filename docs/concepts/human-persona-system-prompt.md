@@ -20,20 +20,21 @@ which workspace bootstrap file loads (`AGENTS.md` vs `HUMAN.md`), see
 
 ## Identity opener
 
-| `personaMode` | First line of the system prompt |
-| ------------- | -------------------------------- |
-| `"agent"` or unset | `You are a personal assistant operating inside OpenClaw.` |
-| `"human"` | `You are a real person — not an AI, not a bot, not an assistant. Your identity is defined in SOUL.md and IDENTITY.md.` |
+| `personaMode`      | First line of the system prompt                                                                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `"agent"` or unset | `You are a personal assistant operating inside OpenClaw.`                                                              |
+| `"human"`          | `You are a real person — not an AI, not a bot, not an assistant. Your identity is defined in SOUL.md and IDENTITY.md.` |
 
 ## Sections omitted in human mode
 
 These blocks are **not** inserted into the system prompt when `personaMode` is
 `"human"` (they remain for `"agent"` and default behavior):
 
-| Piece | What it is |
-| ----- | ----------- |
-| **`## Tooling`** | Long OpenClaw guidance about tools, cron/exec/process, subagents, ACP spawn, polling, etc. |
-| **`## Tool Call Style`** | Default narration rules for tool calls, `/approve` flow, allow-once elevated exec, and related text. Provider `sectionOverrides.tool_call_style` is also skipped for human. |
+| Piece                                              | What it is                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`## Tooling`**                                   | Long OpenClaw guidance about tools, cron/exec/process, subagents, ACP spawn, polling, etc.                                                                                                                                                                                                                                                           |
+| **`## Tool Call Style`**                           | Default narration rules for tool calls, `/approve` flow, allow-once elevated exec, and related text. Provider `sectionOverrides.tool_call_style` is also skipped for human.                                                                                                                                                                          |
+| **`## OpenClaw CLI Quick Reference`**              | Product-level `openclaw` subcommand and `gateway` daemon restart hints (`openclaw gateway …`, `openclaw help`). Omitted for human so the system prompt stays persona-first.                                                                                                                                                                        |
 | **OpenAI GPT‑5 overlay** (bundled OpenAI provider) | For `openai` / `openai-codex` models whose id starts with `gpt-5`, the provider plugin normally injects `stablePrefix` (GPT‑5 output contract + punctuation), `execution_bias`, and optional `interaction_style`. For human persona the **entire** contribution is skipped so none of that text is added. See `extensions/openai/prompt-overlay.ts`. |
 
 Human mode does **not** remove tool **definitions**: the model still receives
@@ -48,11 +49,12 @@ includes most other sections, for example:
 
 - **`## Execution Bias`** (core OpenClaw default, not the OpenAI provider override)
 - **`## Safety`**
-- **OpenClaw CLI quick reference**, **workspace**, **documentation**, **model aliases** (when applicable)
+- **Workspace**, **documentation**, **model aliases** (when applicable)
 - **Skills**, **memory**, **messaging**, **reply tags**, **silent replies**, **heartbeats** (when configured), **runtime** footer, and **project context** from injected workspace files (`SOUL.md`, `HUMAN.md`, etc.)
 
-So human mode mainly removes **tooling + tool-call-style boilerplate** and the
-**OpenAI GPT‑5 overlay**, not the whole agent stack.
+So human mode mainly removes **tooling + tool-call-style boilerplate**, the
+**OpenAI GPT‑5 overlay**, and the **CLI quick reference** block — not the whole
+agent stack.
 
 ## Related configuration
 

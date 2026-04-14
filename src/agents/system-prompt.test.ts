@@ -154,6 +154,8 @@ describe("buildAgentSystemPrompt", () => {
     );
     expect(human).not.toContain("## Tool Call Style");
     expect(human).not.toContain("Never execute /approve through exec or any other shell/tool path");
+    expect(human).not.toContain("## OpenClaw CLI Quick Reference");
+    expect(human).not.toContain("openclaw gateway restart");
     expect(human).toContain("You are a real person — not an AI, not a bot, not an assistant.");
     expect(human).toContain("## Execution Bias");
 
@@ -167,6 +169,7 @@ describe("buildAgentSystemPrompt", () => {
       "Structured tool definitions are the source of truth for tool names, descriptions, and parameters.",
     );
     expect(agent).toContain("## Tool Call Style");
+    expect(agent).toContain("## OpenClaw CLI Quick Reference");
   });
 
   it("includes skills in minimal prompt mode when skillsPrompt is provided (cron regression)", () => {

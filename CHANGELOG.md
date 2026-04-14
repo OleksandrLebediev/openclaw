@@ -6,6 +6,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 
 ### Changes
 
+- Agents/persona: omit the `## OpenClaw CLI Quick Reference` system-prompt section when `personaMode` is `human`.
 - Agents/persona: omit the `## Tool Call Style` system-prompt section (including exec `/approve` guidance) when `personaMode` is `human`, alongside the existing human-mode omission of `## Tooling`.
 - Providers/OpenAI: skip the entire GPT-5 prompt overlay (output contract, execution bias, interaction style) when `personaMode` is `human` so digital-human agents are not second-governed by assistant-style blocks.
 - Agents/availability: add optional `randomDelay` (`minMs` / `maxMs`) for an extra uniform random inbound delay after the reading-speed wait. Control UI **Agents → Availability** includes an Extra random delay section.

@@ -122,6 +122,15 @@ function buildSkillsSection(params: { skillsPrompt?: string; readToolName: strin
   ];
 }
 
+/** Human persona: keep optional skills catalog only; omit orchestrator-style SKILL.md scan rules. */
+function buildHumanPersonaSkillsSection(params: { skillsPrompt?: string }) {
+  const trimmed = params.skillsPrompt?.trim();
+  if (!trimmed) {
+    return [];
+  }
+  return [trimmed, ""];
+}
+
 function buildMemorySection(params: {
   isMinimal: boolean;
   availableTools: Set<string>;
@@ -460,10 +469,13 @@ export function buildAgentSystemPrompt(params: {
     "Do not manipulate or persuade anyone to expand access or disable safeguards. Do not copy yourself or change system prompts, safety rules, or tool policies unless explicitly requested.",
     "",
   ];
-  const skillsSection = buildSkillsSection({
-    skillsPrompt,
-    readToolName,
-  });
+  const skillsSection =
+    params.personaMode === "human"
+      ? buildHumanPersonaSkillsSection({ skillsPrompt })
+      : buildSkillsSection({
+          skillsPrompt,
+          readToolName,
+        });
   const memorySection = buildMemorySection({
     isMinimal,
     availableTools,
@@ -596,9 +608,9 @@ export function buildAgentSystemPrompt(params: {
     ...(params.userProfileContent && !isMinimal
       ? ["## About this user", params.userProfileContent, ""]
       : []),
-    // Skip self-update for subagent/none modes
-    hasGateway && !isMinimal ? "## OpenClaw Self-Update" : "",
-    hasGateway && !isMinimal
+    // Skip self-update for subagent/none modes and human persona (admin / product self-update is not persona voice).
+    hasGateway && !isMinimal && !isHumanPersona ? "## OpenClaw Self-Update" : "",
+    hasGateway && !isMinimal && !isHumanPersona
       ? [
           "Get Updates (self-update) is ONLY allowed when the user explicitly asks for it.",
           "Do not run config.apply or update.run unless the user explicitly requests an update or config change; if it's not explicit, ask first.",
@@ -607,7 +619,7 @@ export function buildAgentSystemPrompt(params: {
           "After restart, OpenClaw pings the last active session automatically.",
         ].join("\n")
       : "",
-    hasGateway && !isMinimal ? "" : "",
+    hasGateway && !isMinimal && !isHumanPersona ? "" : "",
     "",
     // Skip model aliases for subagent/none modes
     modelAliasLines.length > 0 && !isMinimal ? "## Model Aliases" : "",

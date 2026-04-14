@@ -159,6 +159,30 @@ describe("buildAgentSystemPrompt", () => {
     expect(human).toContain("You are a real person — not an AI, not a bot, not an assistant.");
     expect(human).toContain("## Execution Bias");
 
+    const humanWithGateway = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      personaMode: "human",
+      toolNames: ["gateway", "exec"],
+    });
+    expect(humanWithGateway).not.toContain("## OpenClaw Self-Update");
+    expect(humanWithGateway).not.toContain(
+      "Get Updates (self-update) is ONLY allowed when the user explicitly asks for it.",
+    );
+
+    const skillsPrompt =
+      "<available_skills>\n  <skill>\n    <name>demo</name>\n  </skill>\n</available_skills>";
+    const humanWithSkills = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      personaMode: "human",
+      toolNames: ["read", "exec"],
+      skillsPrompt,
+    });
+    expect(humanWithSkills).not.toContain("## Skills (mandatory)");
+    expect(humanWithSkills).not.toContain("Before replying: scan");
+    expect(humanWithSkills).not.toContain("If exactly one skill clearly applies");
+    expect(humanWithSkills).toContain("<available_skills>");
+    expect(humanWithSkills).toContain("<name>demo</name>");
+
     const agent = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw",
       personaMode: "agent",
@@ -170,6 +194,15 @@ describe("buildAgentSystemPrompt", () => {
     );
     expect(agent).toContain("## Tool Call Style");
     expect(agent).toContain("## OpenClaw CLI Quick Reference");
+
+    const agentWithSkills = buildAgentSystemPrompt({
+      workspaceDir: "/tmp/openclaw",
+      personaMode: "agent",
+      toolNames: ["read", "exec"],
+      skillsPrompt,
+    });
+    expect(agentWithSkills).toContain("## Skills (mandatory)");
+    expect(agentWithSkills).toContain("Before replying: scan");
   });
 
   it("includes skills in minimal prompt mode when skillsPrompt is provided (cron regression)", () => {

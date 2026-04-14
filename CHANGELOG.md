@@ -6,6 +6,8 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 
 ### Changes
 
+- Agents/persona: omit the `## OpenClaw Self-Update` system-prompt section when `personaMode` is `human` (still omitted for minimal/none modes as before).
+- Agents/persona: omit the `## Skills (mandatory)` orchestrator block (SKILL.md scan rules) when `personaMode` is `human`; optional skills catalog text is still included when configured.
 - Agents/persona: omit the `## OpenClaw CLI Quick Reference` system-prompt section when `personaMode` is `human`.
 - Agents/persona: omit the `## Tool Call Style` system-prompt section (including exec `/approve` guidance) when `personaMode` is `human`, alongside the existing human-mode omission of `## Tooling`.
 - Providers/OpenAI: skip the entire GPT-5 prompt overlay (output contract, execution bias, interaction style) when `personaMode` is `human` so digital-human agents are not second-governed by assistant-style blocks.
@@ -27,10 +29,10 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 - Agents/persona: add `agents.defaults.personaMode` config option (`"agent"` or `"human"`); when set to `"human"`, `HUMAN.md` is loaded instead of `AGENTS.md` so workspaces can deploy a digital-human persona with its own operational instructions.
 - Agents: add optional `agents.defaults.availability` and `agents.list[].availability` for agent-side scheduling (timezone, active hours, busy windows, offline queue vs immediate replies, busy delay, reading-speed delay before replies). Control UI adds an **Agents → Availability** tab (documented in the Gateway configuration reference).
 - Dev: add `pnpm availability:probe` (`scripts/dev/availability-probe.ts`) to smoke-test reading-delay wall time on a remote host via SSH, reusing persona-probe capture and shared report output.
-- Dev: extend `availability:probe` with named `**--preset`** reading-speed bundles, `**--list-presets**`, and `**--reading-speed\*\*`JSON merge so one host config can be exercised without editing`cases.ts`.
-- Dev: extend `availability:probe` with more inbound reading lengths, a **`writing`** group (echo prompts; `read+write` lower bound vs `durationMs`), preset **`writingSpeed`** snippets, and **`--writing-speed`** JSON merge.
-- Dev: add **`--print-expectations`** to `availability:probe` (Markdown tables of expected read/write delays from gateway helpers) plus `test/availability-probe-expectations.test.ts` for parametric delay checks.
-- Gateway/diagnostics: emit **`reply.availability_timing`** events from `dispatch-from-config` when `diagnostics.enabled` (inbound `applyAvailabilityWait` wall time and outbound `writingSpeed` sleep / skip reasons) for tests and `onDiagnosticEvent` consumers.
+- Dev: extend `availability:probe` with named `**--preset`** reading-speed bundles, `**--list-presets`**, and `\*\*--reading-speed\*\*`JSON merge so one host config can be exercised without editing`cases.ts`.
+- Dev: extend `availability:probe` with more inbound reading lengths, a `**writing**` group (echo prompts; `read+write` lower bound vs `durationMs`), preset `**writingSpeed**` snippets, and `**--writing-speed**` JSON merge.
+- Dev: add `**--print-expectations**` to `availability:probe` (Markdown tables of expected read/write delays from gateway helpers) plus `test/availability-probe-expectations.test.ts` for parametric delay checks.
+- Gateway/diagnostics: emit `**reply.availability_timing**` events from `dispatch-from-config` when `diagnostics.enabled` (inbound `applyAvailabilityWait` wall time and outbound `writingSpeed` sleep / skip reasons) for tests and `onDiagnosticEvent` consumers.
 - Docs: move SSH probe docs to [https://docs.openclaw.ai/help/remote-probes](https://docs.openclaw.ai/help/remote-probes) so they are not mixed into the Vitest testing guide.
 - Dev: availability / persona probe Markdown reports now include run context, per-probe scenarios, timing, and full check outcome lists.
 - Agents/availability: align implicit `readingSpeed` / `writingSpeed` defaults with typical human pacing (reading ~200 wpm with a 2s floor and 30s cap; outbound typing ~40 wpm with a 1.5s floor and 60s cap when individual fields are omitted).
@@ -333,7 +335,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 - Memory/session indexer: include `.jsonl.reset.*` and `.jsonl.deleted.*` transcripts in the memory host session scan while still excluding `.jsonl.bak.*` compaction backups and lock files, so memory search sees archived session history without duplicating stale snapshots. Thanks @hclsys and @vincentkoc.
 - Agents/sandbox: honor `tools.sandbox.tools.alsoAllow`, let explicit sandbox re-allows remove matching built-in default-deny tools, and keep sandbox explain/error guidance aligned with the effective sandbox tool policy. (#54492) Thanks @ngutman.
 - LINE/ACP: add current-conversation binding and inbound binding-routing parity so `/acp spawn ... --thread here`, configured ACP bindings, and active conversation-bound ACP sessions work on LINE like the other conversation channels.
-- LINE/markdown: preserve underscores inside Latin, Cyrillic, and CJK words when stripping markdown, while still removing standalone `_italic`\_ markers on the shared text-runtime path used by LINE and TTS. (#47465) Thanks @jackjin1997.
+- LINE/markdown: preserve underscores inside Latin, Cyrillic, and CJK words when stripping markdown, while still removing standalone `_italic` markers on the shared text-runtime path used by LINE and TTS. (#47465) Thanks @jackjin1997.
 - TTS/Microsoft: auto-switch the default Edge voice to Chinese for CJK-dominant text without overriding explicitly selected Microsoft voices. (#52355) Thanks @extrasmall0.
 - Agents/context pruning: count supplementary-plane CJK characters with the shared code-point-aware estimator so context pruning stops underestimating Japanese and Chinese text that uses Extension B ideographs. (#39985) Thanks @Edward-Qiang-2024.
 - Slack/status reactions: add a reaction lifecycle for queued, thinking, tool, done, and error phases in Slack monitors, with safer cleanup so queued ack reactions stay correct across silent runs, pre-reply failures, and delayed transitions. (#56430) Thanks @hsiaoa.
@@ -639,7 +641,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 - Image generation/build: write stable runtime alias files into `dist/` and route provider-auth runtime lookups through those aliases so image-generation providers keep resolving auth/runtime modules after rebuilds instead of crashing on missing hashed chunk files.
 - iOS/Live Activities: mark the `ActivityKit` import in `LiveActivityManager.swift` as `@preconcurrency` so Xcode 26.4 / Swift 6 builds stop failing on strict concurrency checks. (#57180) Thanks @ngutman.
 - LINE/ACP: add current-conversation binding and inbound binding-routing parity so `/acp spawn ... --thread here`, configured ACP bindings, and active conversation-bound ACP sessions work on LINE like the other conversation channels.
-- LINE/markdown: preserve underscores inside Latin, Cyrillic, and CJK words when stripping markdown, while still removing standalone `_italic`\_ markers on the shared text-runtime path used by LINE and TTS. (#47465) Thanks @jackjin1997.
+- LINE/markdown: preserve underscores inside Latin, Cyrillic, and CJK words when stripping markdown, while still removing standalone `_italic` markers on the shared text-runtime path used by LINE and TTS. (#47465) Thanks @jackjin1997.
 - Agents/failover: make overloaded same-provider retry count and retry delay configurable via `auth.cooldowns`, default to one retry with no delay, and document the model-fallback behavior.
 - Ollama/model picker: include configured Ollama models in the opted-in non-PI-native model catalog path so Ollama onboarding shows available models directly after provider selection. (#55290) Thanks @Luckymingxuan.
 
@@ -3011,7 +3013,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 ### Fixes
 
 - Sessions/Resilience: ignore invalid persisted `sessionFile` metadata and fall back to the derived safe transcript path instead of aborting session resolution for handlers and tooling. (#16061) Thanks @haoyifan and @vincentkoc.
-- Sessions/Paths: resolve symlinked state-dir aliases during transcript-path validation while preserving safe cross-agent/state-root compatibility for valid `agents/<id>/sessions/`\*\* paths. (#18593) Thanks @EpaL and @vincentkoc.
+- Sessions/Paths: resolve symlinked state-dir aliases during transcript-path validation while preserving safe cross-agent/state-root compatibility for valid `agents/<id>/sessions/` paths. (#18593) Thanks @EpaL and @vincentkoc.
 - Agents/Compaction: count auto-compactions only after a non-retry `auto_compaction_end`, keeping session `compactionCount` aligned to completed compactions.
 - Security/CLI: redact sensitive values in `openclaw config get` output before printing config paths, preventing credential leakage to terminal output/history. (#13683) Thanks @SleuthCo.
 - Agents/Moonshot: force `supportsDeveloperRole=false` for Moonshot-compatible `openai-completions` models (provider `moonshot` and Moonshot base URLs), so initial runs no longer send unsupported `developer` roles that trigger `ROLE_UNSPECIFIED` errors. (#21060, #22194) Thanks @ShengFuC.
@@ -5303,7 +5305,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 
 ### Fixes
 
-- Packaging: include `dist/memory/`\*\* in the npm tarball (fixes `ERR_MODULE_NOT_FOUND` for `dist/memory/index.js`).
+- Packaging: include `dist/memory/` in the npm tarball (fixes `ERR_MODULE_NOT_FOUND` for `dist/memory/index.js`).
 - Agents: persist sub-agent registry across gateway restarts and resume announce flow safely. (#831) - thanks @roshanasingh4.
 - Agents: strip invalid Gemini thought signatures from OpenRouter history to avoid 400s. (#841, #845) - thanks @MatthieuBizien.
 
@@ -5311,13 +5313,13 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 
 ### Fixes
 
-- Packaging: include `dist/channels/**` in the npm tarball (fixes `ERR_MODULE_NOT_FOUND` for `dist/channels/registry.js`).
+- Packaging: include `dist/channels/`\*\* in the npm tarball (fixes `ERR_MODULE_NOT_FOUND` for `dist/channels/registry.js`).
 
 ## 2026.1.12
 
 ### Highlights
 
-- **BREAKING:** rename chat "providers" (Slack/Telegram/WhatsApp/...) to **channels** across CLI/RPC/config; legacy config keys auto-migrate on load (and are written back as `channels.`\*).
+- **BREAKING:** rename chat "providers" (Slack/Telegram/WhatsApp/...) to **channels** across CLI/RPC/config; legacy config keys auto-migrate on load (and are written back as `channels.`).
 - Memory: add vector search for agent memories (Markdown-only) with SQLite index, chunking, lazy sync + file watch, and per-agent enablement/fallback.
 - Plugins: restore full voice-call plugin parity (Telnyx/Twilio, streaming, inbound policies, tools/CLI).
 - Models: add Synthetic provider plus Moonshot Kimi K2 0905 + turbo/thinking variants (with docs). (#811) - thanks @siraht; (#818) - thanks @mickahouan.
@@ -5344,7 +5346,7 @@ Thanks @AlexMikhalev, @CoreyH, @John-Rood, @KrauseFx, @MaudeBot, @Nachx639, @Nic
 - Tools: apply global tool allow/deny even when agent-specific tool policy is set.
 - Models/Providers: treat credential validation failures as auth errors to trigger fallback; normalize `${ENV_VAR}` apiKey values and auto-fill missing provider keys; preserve explicit GitHub Copilot provider config + agent-dir auth profiles. (#822) - thanks @sebslight; (#705) - thanks @TAGOOZ.
 - Auth: drop invalid auth profiles from ordering so environment keys can still be used for providers like MiniMax.
-- Gemini: normalize Gemini 3 ids to preview variants; strip Gemini CLI tool call/response ids; downgrade missing `thought_signature`; strip Claude `msg_*` thought_signature fields to avoid base64 decode errors. (#795) - thanks @thewilloftheshadow; (#783) - thanks @ananth-vardhan-cn; (#793) - thanks @hsrvc; (#805) - thanks @marcmarg.
+- Gemini: normalize Gemini 3 ids to preview variants; strip Gemini CLI tool call/response ids; downgrade missing `thought_signature`; strip Claude `msg_`\* thought_signature fields to avoid base64 decode errors. (#795) - thanks @thewilloftheshadow; (#783) - thanks @ananth-vardhan-cn; (#793) - thanks @hsrvc; (#805) - thanks @marcmarg.
 - Agents: auto-recover from compaction context overflow by resetting the session and retrying; propagate overflow details from embedded runs so callers can recover.
 - MiniMax: strip malformed tool invocation XML; include `MiniMax-VL-01` in implicit provider for image pairing. (#809) - thanks @latitudeki5223.
 - Onboarding/Auth: honor `CLAWDBOT_AGENT_DIR` / `PI_CODING_AGENT_DIR` when writing auth profiles (MiniMax). (#829) - thanks @roshanasingh4.

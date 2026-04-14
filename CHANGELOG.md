@@ -6,6 +6,7 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 
 ### Changes
 
+- Providers/OpenAI: skip the entire GPT-5 prompt overlay (output contract, execution bias, interaction style) when `personaMode` is `human` so digital-human agents are not second-governed by assistant-style blocks.
 - Agents/availability: add optional `randomDelay` (`minMs` / `maxMs`) for an extra uniform random inbound delay after the reading-speed wait. Control UI **Agents → Availability** includes an Extra random delay section.
 - Agents/availability: add optional `writingSpeed` (same shape as `readingSpeed`) for a simulated typing delay before final outbound text is sent, using typing-test words (five characters per word). Control UI **Agents → Availability** includes a Writing speed section.
 - Agents/availability: add `inactiveHours` (preferred) so operators schedule offline time directly; when set it overrides `activeHours`. Control UI **Agents → Availability** edits inactive hours by default.

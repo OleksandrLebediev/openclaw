@@ -78,6 +78,12 @@ export function resolveOpenAISystemPromptContribution(params: {
   modelId?: string;
   personaMode?: "agent" | "human";
 }) {
+  // Human persona: skip the entire GPT-5 overlay (output contract, execution bias,
+  // interaction style). HUMAN.md / SOUL.md define the voice; the OpenAI assistant-style
+  // blocks read as a second controller and can contradict digital-human framing.
+  if (params.personaMode === "human") {
+    return undefined;
+  }
   if (
     !shouldApplyOpenAIPromptOverlay({
       modelProviderId: params.modelProviderId,
@@ -86,10 +92,7 @@ export function resolveOpenAISystemPromptContribution(params: {
   ) {
     return undefined;
   }
-  // In human persona mode, skip the "friendly" overlay entirely — it contains
-  // "Do not claim a body, real-world sensations, or personal life events you did not have."
-  // which directly contradicts the digital-human persona defined in HUMAN.md.
-  const applyFriendly = params.mode === "friendly" && params.personaMode !== "human";
+  const applyFriendly = params.mode === "friendly";
   return {
     stablePrefix: OPENAI_GPT5_OUTPUT_CONTRACT,
     sectionOverrides: {

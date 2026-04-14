@@ -304,6 +304,19 @@ describe("openai plugin", () => {
         modelId: "gpt-image-1",
       }),
     ).toBeUndefined();
+
+    expect(
+      openaiProvider.resolveSystemPromptContribution?.({
+        ...contributionContext,
+        personaMode: "human",
+      }),
+    ).toBeUndefined();
+    expect(
+      codexProvider.resolveSystemPromptContribution?.({
+        ...contributionContext,
+        personaMode: "human",
+      }),
+    ).toBeUndefined();
   });
 
   it("includes stronger execution guidance in the OpenAI prompt overlay", () => {

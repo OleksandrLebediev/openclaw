@@ -5,8 +5,8 @@ description: >-
   diagnostics.cacheTrace, run one test openclaw agent turn for agent lilu, then
   restore the prior openclaw.json and restart the gateway so diagnostics stay off.
   The laptop script pulls Markdown exports into the repo under .tmp/openclaw-lilu-diag
-  when possible (for Cursor), else a system temp dir; prints file:// links and on macOS
-  can open the system prompt in the default app.
+  when possible (for Cursor), else a system temp dir; documents stream:context as the
+  full embedded LLM snapshot; prints file:// links and on macOS can open the system prompt.
 ---
 
 # OpenClaw claw: Lilu diagnostics probe (temporary cache trace)
@@ -40,8 +40,8 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 ## Prerequisites on your laptop
 
 - `scp` and `ssh` (same SSH config that reaches `claw`).
-- Optional: `**python3`\*\* for correct `file://` URLs when paths contain special characters (otherwise the script prints a naive `file://` prefix).
-- For `**{git-root}/.tmp/openclaw-lilu-diag/**`: run from **inside** the OpenClaw git checkout (any subdir), or set `**OPENCLAW_REPO_ROOT`\*\* to the repo path.
+- Optional: **python3** for correct `file://` URLs when paths contain special characters (otherwise the script prints a naive `file://` prefix).
+- For **`{git-root}/.tmp/openclaw-lilu-diag/`**: run from **inside** the OpenClaw git checkout (any subdir), or set **`OPENCLAW_REPO_ROOT`** to the repo path.
 
 ## Canonical behavior (docs)
 
@@ -49,11 +49,24 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 - Output: JSONL with stages such as `session:loaded`, `prompt:before`, `stream:context`, `session:after`.
 - After editing config, **restart** `openclaw-gateway.service` so the gateway reloads settings.
 
+## Full LLM snapshot (what cache trace captures)
+
+With **`includeMessages`**, **`includeSystem`**, and **`includePrompt`** set to **`true`** (the **defaults** in OpenClaw; see [Prompt caching](https://docs.openclaw.ai/reference/prompt-caching#diagnosticscachetrace-config)), each **`stream:context`** line in the cache-trace JSONL records what the embedded runtime passes into the model **`streamFn`**: **`system`** (or `systemPrompt`), **`messages`**, **`options`**, plus **`model`** metadata (`id`, `provider`, `api`). That single JSON object is the most complete practical answer to “what goes to the LLM” for most providers **without** a separate per-vendor payload logger.
+
+**Caveats:**
+
+- Values are **sanitized for diagnostics** (for example image/base64 redaction and sensitive-shaped fields) — good for structure and text, not always byte-identical to raw HTTP bodies.
+- The **`.md` exports** in this skill only pull **slices** (system text, `prompt:before` text, etc.). For the **full** snapshot in one object, read the last `stream:context` from the copied JSONL (local path after a run is usually `.tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl`):
+
+```bash
+jq -rs 'map(select(.stage == "stream:context")) | last' .tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl
+```
+
 ## One-shot script (run from your laptop)
 
-**Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to `**/tmp` on claw\*\* (overwritten each run). Restores the original file even if the agent step fails.
+**Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to **`/tmp` on claw** (overwritten each run). Restores the original file even if the agent step fails.
 
-**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into `**{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir, print `**file://**`links, print`**open …**`, a **Cursor-relative path** hint, and optionally run `**open`** on the system prompt when `OPENCLAW_LILU_DIAG_OPEN=1` (default on Darwin).
+**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into **`{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir, print **`file://`** links, print **`open …`**, a **Cursor-relative path** hint, and optionally run **`open`** on the system prompt when `OPENCLAW_LILU_DIAG_OPEN=1` (default on Darwin).
 
 ```bash
 #!/usr/bin/env bash

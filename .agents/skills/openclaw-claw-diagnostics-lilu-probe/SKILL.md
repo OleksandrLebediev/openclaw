@@ -4,16 +4,16 @@ description: >-
   On the remote gateway host (SSH alias claw): temporarily enable
   diagnostics.cacheTrace, run one test openclaw agent turn for agent lilu, then
   restore the prior openclaw.json and restart the gateway so diagnostics stay off.
-  The laptop one-shot script pulls exports via scp into the git repo under
-  .tmp/openclaw-lilu-diag when possible (for Cursor), else a system temp dir;
-  prints file:// links and on macOS can open the system prompt in the default app.
+  The laptop script pulls Markdown exports into the repo under .tmp/openclaw-lilu-diag
+  when possible (for Cursor), else a system temp dir; prints file:// links and on macOS
+  can open the system prompt in the default app.
 ---
 
 # OpenClaw claw: Lilu diagnostics probe (temporary cache trace)
 
 Use this skill when the operator wants a **short, isolated diagnostic capture** on **claw**: enable `diagnostics.cacheTrace`, send **one** CLI agent turn to **`lilu`**, then **turn diagnostics off** by restoring the previous config.
 
-This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content). The **default flow runs from your laptop**: remote probe still writes **`/tmp/openclaw-lilu-diag-*` on claw**, then **`scp`** copies those files into **`{git-root}/.tmp/openclaw-lilu-diag/`** when the script can resolve a git root (ignored by git via `.tmp/` — open **`.tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.txt`** in Cursor from the repo). If you are not inside the checkout, it falls back to **`mktemp`** under `${TMPDIR:-/tmp}`. The script prints **`file://`** URLs plus **`open …`** on macOS.
+This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content). The **default flow runs from your laptop**: remote probe still writes **`/tmp/openclaw-lilu-diag-*` on claw**, then **`scp`** copies slices into **`{git-root}/.tmp/openclaw-lilu-diag/`** as **`.md`** (plus raw **`.jsonl`** trace) when `git rev-parse --show-toplevel` works. Open **`.tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.md`** in Cursor. Outside a checkout, the script falls back to **`mktemp`** under `${TMPDIR:-/tmp}`. It prints **`file://`** URLs and **`open …`** on macOS.
 
 ## Assumptions (override if the operator says otherwise)
 
@@ -29,7 +29,7 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 | Repo root override     | `OPENCLAW_REPO_ROOT` — use when you run the script outside the repo but want the project `.tmp/` path                                                                                 |
 | Custom pull dir        | `OPENCLAW_LILU_DIAG_PULL_DIR` — absolute path; created with `mkdir -p`; contents are **not** auto-deleted                                                                             |
 | SSH host override      | `OPENCLAW_CLAW_SSH_HOST` (default: `claw`)                                                                                                                                            |
-| macOS auto-open        | `OPENCLAW_LILU_DIAG_OPEN=1` (default) opens the system-prompt file; set `0` to skip                                                                                                   |
+| macOS auto-open        | `OPENCLAW_LILU_DIAG_OPEN=1` (default) opens `openclaw-lilu-diag-system-prompt.md`; set `0` to skip                                                                                    |
 
 ## Prerequisites on claw
 
@@ -40,8 +40,8 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 ## Prerequisites on your laptop
 
 - `scp` and `ssh` (same SSH config that reaches `claw`).
-- Optional: **`python3`** for correct `file://` URLs when paths contain special characters (otherwise the script prints a naive `file://` prefix).
-- For **`{git-root}/.tmp/openclaw-lilu-diag/`**: run from **inside** the OpenClaw git checkout (any subdir), or set **`OPENCLAW_REPO_ROOT`** to the repo path.
+- Optional: `**python3`\*\* for correct `file://` URLs when paths contain special characters (otherwise the script prints a naive `file://` prefix).
+- For `**{git-root}/.tmp/openclaw-lilu-diag/**`: run from **inside** the OpenClaw git checkout (any subdir), or set `**OPENCLAW_REPO_ROOT`\*\* to the repo path.
 
 ## Canonical behavior (docs)
 
@@ -51,9 +51,9 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 
 ## One-shot script (run from your laptop)
 
-**Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to **`/tmp` on claw** (overwritten each run). Restores the original file even if the agent step fails.
+**Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to `**/tmp` on claw\*\* (overwritten each run). Restores the original file even if the agent step fails.
 
-**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into **`{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir, print **`file://`** links, print **`open …`**, a **Cursor-relative path** hint, and optionally run **`open`** on the system prompt when `OPENCLAW_LILU_DIAG_OPEN=1` (default on Darwin).
+**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into `**{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir, print `**file://**`links, print`**open …**`, a **Cursor-relative path** hint, and optionally run `**open`** on the system prompt when `OPENCLAW_LILU_DIAG_OPEN=1` (default on Darwin).
 
 ```bash
 #!/usr/bin/env bash
@@ -102,7 +102,7 @@ file_uri() {
 
 echo "openclaw-lilu-diag: local pull dir -> $LOCAL_PULL_DIR"
 if [[ -n "$REPO_ROOT_FOR_HINT" ]]; then
-  echo "openclaw-lilu-diag: Cursor — open file (repo-relative): .tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.txt"
+  echo "openclaw-lilu-diag: Cursor — open file (repo-relative): .tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.md"
   echo "openclaw-lilu-diag: repo root: $REPO_ROOT_FOR_HINT"
 fi
 
@@ -120,16 +120,22 @@ export_diag_tmp() {
     echo "openclaw-lilu-diag: no trace file at $TRACE_RESOLVED (skip export)" >&2
     return 0
   fi
-  jq -rs 'map(select(.stage == "stream:context" and .system != null)) | last | .system // empty' \
-    "$TRACE_RESOLVED" > /tmp/openclaw-lilu-diag-system-prompt.txt || true
-  jq -rs 'map(select(.stage == "stream:context" and .prompt != null)) | last | .prompt // empty' \
-    "$TRACE_RESOLVED" > /tmp/openclaw-lilu-diag-stream-prompt.txt || true
-  jq -rs 'map(select(.stage == "prompt:before" and .prompt != null)) | last | .prompt // empty' \
-    "$TRACE_RESOLVED" > /tmp/openclaw-lilu-diag-prompt-before.txt || true
+  {
+    printf '%s\n\n' "# Lilu diagnostics: outbound system prompt" "> Source: last \`stream:context\` **system** · skill \`openclaw-claw-diagnostics-lilu-probe\`." ""
+    jq -rs 'map(select(.stage == "stream:context" and .system != null)) | last | .system // empty' "$TRACE_RESOLVED"
+  } > /tmp/openclaw-lilu-diag-system-prompt.md || true
+  {
+    printf '%s\n\n' "# Lilu diagnostics: stream user prompt" "> Source: last \`stream:context\` **prompt** (if logged)." ""
+    jq -rs 'map(select(.stage == "stream:context" and .prompt != null)) | last | .prompt // empty' "$TRACE_RESOLVED"
+  } > /tmp/openclaw-lilu-diag-stream-prompt.md || true
+  {
+    printf '%s\n\n' "# Lilu diagnostics: prompt before model" "> Source: last \`prompt:before\` **prompt** (if logged)." ""
+    jq -rs 'map(select(.stage == "prompt:before" and .prompt != null)) | last | .prompt // empty' "$TRACE_RESOLVED"
+  } > /tmp/openclaw-lilu-diag-prompt-before.md || true
   cp -a "$TRACE_RESOLVED" /tmp/openclaw-lilu-diag-cache-trace.jsonl || true
-  chmod 600 /tmp/openclaw-lilu-diag-system-prompt.txt \
-    /tmp/openclaw-lilu-diag-stream-prompt.txt \
-    /tmp/openclaw-lilu-diag-prompt-before.txt \
+  chmod 600 /tmp/openclaw-lilu-diag-system-prompt.md \
+    /tmp/openclaw-lilu-diag-stream-prompt.md \
+    /tmp/openclaw-lilu-diag-prompt-before.md \
     /tmp/openclaw-lilu-diag-cache-trace.jsonl 2>/dev/null || true
   echo "openclaw-lilu-diag: exported under /tmp on this host:" >&2
   ls -la /tmp/openclaw-lilu-diag-* >&2 || true
@@ -167,9 +173,9 @@ REMOTE_EXIT=$?
 set -e
 
 REMOTE_BASES=(
-  openclaw-lilu-diag-system-prompt.txt
-  openclaw-lilu-diag-stream-prompt.txt
-  openclaw-lilu-diag-prompt-before.txt
+  openclaw-lilu-diag-system-prompt.md
+  openclaw-lilu-diag-stream-prompt.md
+  openclaw-lilu-diag-prompt-before.md
   openclaw-lilu-diag-cache-trace.jsonl
 )
 for base in "${REMOTE_BASES[@]}"; do
@@ -188,7 +194,7 @@ for f in "$LOCAL_PULL_DIR"/*; do
   file_uri "$f"
 done
 
-SYS_LOCAL="$LOCAL_PULL_DIR/openclaw-lilu-diag-system-prompt.txt"
+SYS_LOCAL="$LOCAL_PULL_DIR/openclaw-lilu-diag-system-prompt.md"
 echo ""
 echo "=== Finder: reveal folder ==="
 echo "open $(printf %q "$LOCAL_PULL_DIR")"
@@ -213,19 +219,19 @@ exit "$REMOTE_EXIT"
 
 After a successful trace write, the **remote** script fills these paths on **claw**:
 
-| Path                                        | Contents                                                                                 |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `/tmp/openclaw-lilu-diag-system-prompt.txt` | Last `stream:context` **system** string (full outbound system prompt text when present). |
-| `/tmp/openclaw-lilu-diag-stream-prompt.txt` | Last `stream:context` **prompt** (user turn text for that stage, if logged).             |
-| `/tmp/openclaw-lilu-diag-prompt-before.txt` | Last `prompt:before` **prompt** (if present).                                            |
-| `/tmp/openclaw-lilu-diag-cache-trace.jsonl` | Full copy of the probe JSONL for offline `jq` / diff.                                    |
+| Path                                        | Contents                                                                       |
+| ------------------------------------------- | ------------------------------------------------------------------------------ |
+| `/tmp/openclaw-lilu-diag-system-prompt.md`  | Last `stream:context` **system** string, wrapped with a Markdown title + note. |
+| `/tmp/openclaw-lilu-diag-stream-prompt.md`  | Last `stream:context` **prompt** (if logged), as Markdown.                     |
+| `/tmp/openclaw-lilu-diag-prompt-before.md`  | Last `prompt:before` **prompt** (if present), as Markdown.                     |
+| `/tmp/openclaw-lilu-diag-cache-trace.jsonl` | Full copy of the probe JSONL for offline `jq` / diff.                          |
 
-The **laptop** script copies the same filenames into **`$LOCAL_PULL_DIR`** (by default **`{git-root}/.tmp/openclaw-lilu-diag/`** inside your OpenClaw checkout) and prints **`file://`** URLs for each file that actually arrived (`scp` tolerates missing remote files).
+The **laptop** script copies the same filenames into **`$LOCAL_PULL_DIR`** (by default **`{git-root}/.tmp/openclaw-lilu-diag/`**) and prints **`file://`** URLs for each file that actually arrived (`scp` tolerates missing remote files).
 
 Remove temp exports on claw when finished:
 
 ```bash
-ssh -o BatchMode=yes "$OPENCLAW_CLAW_SSH_HOST" 'rm -f /tmp/openclaw-lilu-diag-*.txt /tmp/openclaw-lilu-diag-cache-trace.jsonl'
+ssh -o BatchMode=yes "$OPENCLAW_CLAW_SSH_HOST" 'rm -f /tmp/openclaw-lilu-diag-*.md /tmp/openclaw-lilu-diag-*.txt /tmp/openclaw-lilu-diag-cache-trace.jsonl'
 ```
 
 Remove the **local** pull directory when finished: the script prints a ready-to-run **`rm -rf '…'`** line at the end (`cleanup (local)`). Copy that line, or delete the directory shown as `local pull dir`.

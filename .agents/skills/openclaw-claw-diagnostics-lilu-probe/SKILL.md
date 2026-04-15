@@ -4,23 +4,26 @@ description: >-
   On the remote gateway host (SSH alias claw): temporarily enable
   diagnostics.cacheTrace, run one test openclaw agent turn for agent lilu, then
   restore the prior openclaw.json and restart the gateway so diagnostics stay off.
+  Exports system prompt slices and a JSONL copy to predictable paths under /tmp
+  on the server for scp or quick inspection.
 ---
 
 # OpenClaw claw: Lilu diagnostics probe (temporary cache trace)
 
 Use this skill when the operator wants a **short, isolated diagnostic capture** on **claw**: enable `diagnostics.cacheTrace`, send **one** CLI agent turn to **`lilu`**, then **turn diagnostics off** by restoring the previous config.
 
-This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content).
+This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content). The bundled script also writes **sanitized slices** and a **full JSONL copy** to **`/tmp/openclaw-lilu-diag-*` on claw** so you can `scp` or `cat` without hunting inside the state dir.
 
 ## Assumptions (override if the operator says otherwise)
 
-| Item             | Default                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------ |
-| SSH target       | `claw` (from `~/.ssh/config`)                                                                    |
-| Config file      | `/root/.openclaw/openclaw.json`                                                                  |
-| Gateway service  | user systemd unit `openclaw-gateway.service`                                                     |
-| Probe agent id   | `lilu` (must exist in `agents.list`)                                                             |
-| Probe trace file | `~/.openclaw/logs/lilu-diag-probe-cache-trace.jsonl` (separate from default `cache-trace.jsonl`) |
+| Item                   | Default                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------ |
+| SSH target             | `claw` (from `~/.ssh/config`)                                                                    |
+| Config file            | `/root/.openclaw/openclaw.json`                                                                  |
+| Gateway service        | user systemd unit `openclaw-gateway.service`                                                     |
+| Probe agent id         | `lilu` (must exist in `agents.list`)                                                             |
+| Probe trace file       | `~/.openclaw/logs/lilu-diag-probe-cache-trace.jsonl` (separate from default `cache-trace.jsonl`) |
+| Temp exports (on claw) | Fixed paths under `/tmp/openclaw-lilu-diag-*` (overwritten each run; pull with `scp`)            |
 
 ## Prerequisites on claw
 
@@ -36,7 +39,7 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 
 ## One-shot script (run from your laptop)
 
-Runs entirely **on the server** in one SSH session: backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway. Restores the original file even if the agent step fails.
+Runs entirely **on the server** in one SSH session: backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → **export slices to `/tmp` on claw** (overwritten each run). Restores the original file even if the agent step fails.
 
 ```bash
 ssh -o BatchMode=yes -o ConnectTimeout=25 claw 'bash -s' <<'REMOTE_SCRIPT'
@@ -44,7 +47,29 @@ set -euo pipefail
 CFG=/root/.openclaw/openclaw.json
 BACKUP=$(mktemp /tmp/openclaw-json-pre-lilu-probe.XXXXXX)
 PROBE_FILE='~/.openclaw/logs/lilu-diag-probe-cache-trace.jsonl'
+TRACE_RESOLVED=/root/.openclaw/logs/lilu-diag-probe-cache-trace.jsonl
 MSG='Diagnostic probe for Lilu. Reply with one short English word only.'
+
+# Predictable temp exports (sensitive prompt text — root-only perms).
+export_diag_tmp() {
+  if [[ ! -f "$TRACE_RESOLVED" ]]; then
+    echo "openclaw-lilu-diag: no trace file at $TRACE_RESOLVED (skip export)" >&2
+    return 0
+  fi
+  jq -rs 'map(select(.stage == "stream:context" and .system != null)) | last | .system // empty' \
+    "$TRACE_RESOLVED" > /tmp/openclaw-lilu-diag-system-prompt.txt || true
+  jq -rs 'map(select(.stage == "stream:context" and .prompt != null)) | last | .prompt // empty' \
+    "$TRACE_RESOLVED" > /tmp/openclaw-lilu-diag-stream-prompt.txt || true
+  jq -rs 'map(select(.stage == "prompt:before" and .prompt != null)) | last | .prompt // empty' \
+    "$TRACE_RESOLVED" > /tmp/openclaw-lilu-diag-prompt-before.txt || true
+  cp -a "$TRACE_RESOLVED" /tmp/openclaw-lilu-diag-cache-trace.jsonl || true
+  chmod 600 /tmp/openclaw-lilu-diag-system-prompt.txt \
+    /tmp/openclaw-lilu-diag-stream-prompt.txt \
+    /tmp/openclaw-lilu-diag-prompt-before.txt \
+    /tmp/openclaw-lilu-diag-cache-trace.jsonl 2>/dev/null || true
+  echo "openclaw-lilu-diag: exported under /tmp on this host:" >&2
+  ls -la /tmp/openclaw-lilu-diag-* >&2 || true
+}
 
 cp -a "$CFG" "$BACKUP"
 restore() {
@@ -71,9 +96,34 @@ set -e
 
 trap - EXIT
 restore
+export_diag_tmp
 
 exit "$AGENT_EXIT"
 REMOTE_SCRIPT
+```
+
+## Exported temp files (on claw)
+
+After a successful trace write, the script fills these paths on the **remote** host (same machine as `claw`):
+
+| Path                                        | Contents                                                                                 |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `/tmp/openclaw-lilu-diag-system-prompt.txt` | Last `stream:context` **system** string (full outbound system prompt text when present). |
+| `/tmp/openclaw-lilu-diag-stream-prompt.txt` | Last `stream:context` **prompt** (user turn text for that stage, if logged).             |
+| `/tmp/openclaw-lilu-diag-prompt-before.txt` | Last `prompt:before` **prompt** (if present).                                            |
+| `/tmp/openclaw-lilu-diag-cache-trace.jsonl` | Full copy of the probe JSONL for offline `jq` / diff.                                    |
+
+Copy to your laptop (example):
+
+```bash
+scp claw:/tmp/openclaw-lilu-diag-system-prompt.txt /tmp/
+scp claw:/tmp/openclaw-lilu-diag-cache-trace.jsonl /tmp/
+```
+
+Remove temp exports on claw when finished:
+
+```bash
+ssh -o BatchMode=yes claw 'rm -f /tmp/openclaw-lilu-diag-*.txt /tmp/openclaw-lilu-diag-cache-trace.jsonl'
 ```
 
 ## After it runs

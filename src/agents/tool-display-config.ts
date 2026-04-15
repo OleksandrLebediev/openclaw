@@ -471,6 +471,11 @@ export const TOOL_DISPLAY_CONFIG: ToolDisplayConfig = {
       title: "Memory Get",
       detailKeys: ["path", "from", "lines"],
     },
+    memory_update_profile: {
+      emoji: "👤",
+      title: "Update User Profile",
+      detailKeys: ["mode"],
+    },
     web_search: {
       emoji: "🔎",
       title: "Web Search",

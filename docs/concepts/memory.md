@@ -32,13 +32,21 @@ prefer TypeScript." It will write it to the appropriate file.
 
 ## Memory tools
 
-The agent has two tools for working with memory:
+The agent has three tools for working with memory:
 
 - **`memory_search`** -- finds relevant notes using semantic search, even when
   the wording differs from the original.
 - **`memory_get`** -- reads a specific memory file or line range.
+- **`memory_update_profile`** -- writes or updates the current user's
+  `profile.md` (`memory/users/<channel>/<userId>/profile.md`). Available only
+  when `memory.userMode` is `"users"` and the session has a known channel and
+  user id. Supports `mode=replace` (default, overwrites the file) and
+  `mode=merge` (appends after existing content).
 
-Both tools are provided by the active memory plugin (default: `memory-core`).
+The first two tools are available in all memory modes. `memory_update_profile`
+is only registered when per-user memory is active.
+
+All tools are provided by the active memory plugin (default: `memory-core`).
 
 ## Memory search
 

@@ -64,6 +64,11 @@ export const FALLBACK_TOOL_SECTIONS: AgentToolSection[] = [
     tools: [
       { id: "memory_search", label: "memory_search", description: "Semantic search" },
       { id: "memory_get", label: "memory_get", description: "Read memory files" },
+      {
+        id: "memory_update_profile",
+        label: "memory_update_profile",
+        description: "Update user profile",
+      },
     ],
   },
   {

@@ -4,29 +4,32 @@ description: >-
   On the remote gateway host (SSH alias claw): temporarily enable
   diagnostics.cacheTrace, run one test openclaw agent turn for agent lilu, then
   restore the prior openclaw.json and restart the gateway so diagnostics stay off.
-  The laptop one-shot script pulls exports via scp into a local temp directory,
-  prints file:// links, and on macOS can open the system prompt in the default app.
+  The laptop one-shot script pulls exports via scp into the git repo under
+  .tmp/openclaw-lilu-diag when possible (for Cursor), else a system temp dir;
+  prints file:// links and on macOS can open the system prompt in the default app.
 ---
 
 # OpenClaw claw: Lilu diagnostics probe (temporary cache trace)
 
 Use this skill when the operator wants a **short, isolated diagnostic capture** on **claw**: enable `diagnostics.cacheTrace`, send **one** CLI agent turn to **`lilu`**, then **turn diagnostics off** by restoring the previous config.
 
-This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content). The **default flow runs from your laptop**: remote probe still writes **`/tmp/openclaw-lilu-diag-*` on claw**, then **`scp`** copies those files into a **fresh local directory** under `${TMPDIR:-/tmp}` and prints **`file://`** URLs (paste into a browser or Obsidian) plus an **`open …`** hint on macOS.
+This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content). The **default flow runs from your laptop**: remote probe still writes **`/tmp/openclaw-lilu-diag-*` on claw**, then **`scp`** copies those files into **`{git-root}/.tmp/openclaw-lilu-diag/`** when the script can resolve a git root (ignored by git via `.tmp/` — open **`.tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.txt`** in Cursor from the repo). If you are not inside the checkout, it falls back to **`mktemp`** under `${TMPDIR:-/tmp}`. The script prints **`file://`** URLs plus **`open …`** on macOS.
 
 ## Assumptions (override if the operator says otherwise)
 
-| Item                   | Default                                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------------------- |
-| SSH target             | `claw` (from `~/.ssh/config`)                                                                      |
-| Config file            | `/root/.openclaw/openclaw.json`                                                                    |
-| Gateway service        | user systemd unit `openclaw-gateway.service`                                                       |
-| Probe agent id         | `lilu` (must exist in `agents.list`)                                                               |
-| Probe trace file       | `~/.openclaw/logs/lilu-diag-probe-cache-trace.jsonl` (separate from default `cache-trace.jsonl`)   |
-| Temp exports (on claw) | Fixed paths under `/tmp/openclaw-lilu-diag-*` (overwritten each run)                               |
-| Local pull directory   | Fresh `$(mktemp -d "${TMPDIR:-/tmp}/openclaw-lilu-diag.XXXXXX")` on the machine running the script |
-| SSH host override      | `OPENCLAW_CLAW_SSH_HOST` (default: `claw`)                                                         |
-| macOS auto-open        | `OPENCLAW_LILU_DIAG_OPEN=1` (default) opens the system-prompt file; set `0` to skip                |
+| Item                   | Default                                                                                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SSH target             | `claw` (from `~/.ssh/config`)                                                                                                                                                         |
+| Config file            | `/root/.openclaw/openclaw.json`                                                                                                                                                       |
+| Gateway service        | user systemd unit `openclaw-gateway.service`                                                                                                                                          |
+| Probe agent id         | `lilu` (must exist in `agents.list`)                                                                                                                                                  |
+| Probe trace file       | `~/.openclaw/logs/lilu-diag-probe-cache-trace.jsonl` (separate from default `cache-trace.jsonl`)                                                                                      |
+| Temp exports (on claw) | Fixed paths under `/tmp/openclaw-lilu-diag-*` (overwritten each run)                                                                                                                  |
+| Local pull directory   | `{git-root}/.tmp/openclaw-lilu-diag/` when `git rev-parse --show-toplevel` works (cleared each run); else `OPENCLAW_LILU_DIAG_PULL_DIR` if set; else `mktemp` under `${TMPDIR:-/tmp}` |
+| Repo root override     | `OPENCLAW_REPO_ROOT` — use when you run the script outside the repo but want the project `.tmp/` path                                                                                 |
+| Custom pull dir        | `OPENCLAW_LILU_DIAG_PULL_DIR` — absolute path; created with `mkdir -p`; contents are **not** auto-deleted                                                                             |
+| SSH host override      | `OPENCLAW_CLAW_SSH_HOST` (default: `claw`)                                                                                                                                            |
+| macOS auto-open        | `OPENCLAW_LILU_DIAG_OPEN=1` (default) opens the system-prompt file; set `0` to skip                                                                                                   |
 
 ## Prerequisites on claw
 
@@ -38,6 +41,7 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 
 - `scp` and `ssh` (same SSH config that reaches `claw`).
 - Optional: **`python3`** for correct `file://` URLs when paths contain special characters (otherwise the script prints a naive `file://` prefix).
+- For **`{git-root}/.tmp/openclaw-lilu-diag/`**: run from **inside** the OpenClaw git checkout (any subdir), or set **`OPENCLAW_REPO_ROOT`** to the repo path.
 
 ## Canonical behavior (docs)
 
@@ -49,7 +53,7 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 
 **Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to **`/tmp` on claw** (overwritten each run). Restores the original file even if the agent step fails.
 
-**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into a **new local directory**, print **`file://`** links (clickable in many terminals on macOS), print **`open …`** for Finder / default app, and optionally run **`open`** on the system prompt when `OPENCLAW_LILU_DIAG_OPEN=1` (default on Darwin).
+**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into **`{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir, print **`file://`** links, print **`open …`**, a **Cursor-relative path** hint, and optionally run **`open`** on the system prompt when `OPENCLAW_LILU_DIAG_OPEN=1` (default on Darwin).
 
 ```bash
 #!/usr/bin/env bash
@@ -57,7 +61,30 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 # Requires ssh/scp to claw (override host with OPENCLAW_CLAW_SSH_HOST).
 set -euo pipefail
 : "${OPENCLAW_CLAW_SSH_HOST:=claw}"
-LOCAL_PULL_DIR=$(mktemp -d "${TMPDIR:-/tmp}/openclaw-lilu-diag.XXXXXX")
+
+REPO_ROOT_FOR_HINT=""
+if [[ -n "${OPENCLAW_LILU_DIAG_PULL_DIR:-}" ]]; then
+  LOCAL_PULL_DIR="$OPENCLAW_LILU_DIAG_PULL_DIR"
+elif [[ -n "${OPENCLAW_REPO_ROOT:-}" ]]; then
+  root=$(cd "$OPENCLAW_REPO_ROOT" && git rev-parse --show-toplevel 2>/dev/null) || root=""
+  if [[ -n "$root" ]]; then
+    LOCAL_PULL_DIR="$root/.tmp/openclaw-lilu-diag"
+    REPO_ROOT_FOR_HINT=$root
+  else
+    echo "openclaw-lilu-diag: OPENCLAW_REPO_ROOT is not inside a git repo: $OPENCLAW_REPO_ROOT (falling back to mktemp)" >&2
+    LOCAL_PULL_DIR=$(mktemp -d "${TMPDIR:-/tmp}/openclaw-lilu-diag.XXXXXX")
+  fi
+elif root=$(git rev-parse --show-toplevel 2>/dev/null); then
+  LOCAL_PULL_DIR="$root/.tmp/openclaw-lilu-diag"
+  REPO_ROOT_FOR_HINT=$root
+else
+  LOCAL_PULL_DIR=$(mktemp -d "${TMPDIR:-/tmp}/openclaw-lilu-diag.XXXXXX")
+fi
+mkdir -p "$LOCAL_PULL_DIR"
+if [[ -n "$REPO_ROOT_FOR_HINT" ]] && [[ "$LOCAL_PULL_DIR" == "$REPO_ROOT_FOR_HINT/.tmp/openclaw-lilu-diag" ]]; then
+  find "$LOCAL_PULL_DIR" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+fi
+
 SSH=(ssh -o BatchMode=yes -o ConnectTimeout=25 "$OPENCLAW_CLAW_SSH_HOST")
 SCP=(scp -o BatchMode=yes -o ConnectTimeout=25)
 
@@ -74,6 +101,10 @@ file_uri() {
 }
 
 echo "openclaw-lilu-diag: local pull dir -> $LOCAL_PULL_DIR"
+if [[ -n "$REPO_ROOT_FOR_HINT" ]]; then
+  echo "openclaw-lilu-diag: Cursor — open file (repo-relative): .tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.txt"
+  echo "openclaw-lilu-diag: repo root: $REPO_ROOT_FOR_HINT"
+fi
 
 set +e
 "${SSH[@]}" 'bash -s' <<'REMOTE_SCRIPT'
@@ -189,7 +220,7 @@ After a successful trace write, the **remote** script fills these paths on **cla
 | `/tmp/openclaw-lilu-diag-prompt-before.txt` | Last `prompt:before` **prompt** (if present).                                            |
 | `/tmp/openclaw-lilu-diag-cache-trace.jsonl` | Full copy of the probe JSONL for offline `jq` / diff.                                    |
 
-The **laptop** script copies the same filenames into **`$LOCAL_PULL_DIR`** and prints **`file://`** URLs for each file that actually arrived (`scp` tolerates missing remote files).
+The **laptop** script copies the same filenames into **`$LOCAL_PULL_DIR`** (by default **`{git-root}/.tmp/openclaw-lilu-diag/`** inside your OpenClaw checkout) and prints **`file://`** URLs for each file that actually arrived (`scp` tolerates missing remote files).
 
 Remove temp exports on claw when finished:
 

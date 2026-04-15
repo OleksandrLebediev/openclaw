@@ -11,7 +11,11 @@ import {
 import { registerBuiltInMemoryEmbeddingProviders } from "./src/memory/provider-adapters.js";
 import { buildPromptSection } from "./src/prompt-section.js";
 import { memoryRuntime } from "./src/runtime-provider.js";
-import { createMemoryGetTool, createMemorySearchTool } from "./src/tools.js";
+import {
+  createMemoryGetTool,
+  createMemorySearchTool,
+  createMemoryUpdateProfileTool,
+} from "./src/tools.js";
 export {
   buildMemoryFlushPlan,
   DEFAULT_MEMORY_FLUSH_FORCE_TRANSCRIPT_BYTES,
@@ -49,8 +53,21 @@ export default definePluginEntry({
         createMemoryGetTool({
           config: ctx.config,
           agentSessionKey: ctx.sessionKey,
+          messageChannel: ctx.messageChannel,
+          senderId: ctx.requesterSenderId,
         }),
       { names: ["memory_get"] },
+    );
+
+    api.registerTool(
+      (ctx) =>
+        createMemoryUpdateProfileTool({
+          config: ctx.config,
+          agentSessionKey: ctx.sessionKey,
+          messageChannel: ctx.messageChannel,
+          senderId: ctx.requesterSenderId,
+        }),
+      { names: ["memory_update_profile"] },
     );
 
     api.registerCli(

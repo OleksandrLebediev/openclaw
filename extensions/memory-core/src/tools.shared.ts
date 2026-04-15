@@ -39,6 +39,19 @@ export const MemoryGetSchema = Type.Object({
   ),
 });
 
+export const MemoryUpdateProfileSchema = Type.Object({
+  content: Type.String({
+    description:
+      "Full profile content (replace mode) or additional section to append (merge mode). Plain markdown text.",
+  }),
+  mode: Type.Optional(
+    Type.Union([Type.Literal("replace"), Type.Literal("merge")], {
+      description:
+        "replace (default): overwrite entire profile.md. merge: append after existing content.",
+    }),
+  ),
+});
+
 export function resolveMemoryToolContext(options: {
   config?: OpenClawConfig;
   agentSessionKey?: string;

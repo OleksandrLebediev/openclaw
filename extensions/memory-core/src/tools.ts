@@ -26,8 +26,19 @@ import {
   loadMemoryToolRuntime,
   MemoryGetSchema,
   MemorySearchSchema,
+  MemoryUpdateProfileSchema,
+  resolveMemoryToolContext,
   searchMemoryCorpusSupplements,
 } from "./tools.shared.js";
+
+type ProfileToolRuntime = typeof import("./tools.profile.runtime.js");
+
+let profileToolRuntimePromise: Promise<ProfileToolRuntime> | null = null;
+
+function loadProfileToolRuntime(): Promise<ProfileToolRuntime> {
+  profileToolRuntimePromise ??= import("./tools.profile.runtime.js");
+  return profileToolRuntimePromise;
+}
 
 function buildRecallKey(
   result: Pick<MemorySearchResult, "source" | "path" | "startLine" | "endLine">,
@@ -273,9 +284,26 @@ export function createMemorySearchTool(options: {
   });
 }
 
+const GLOBAL_USERS_PREFIX = "memory/users/";
+
+/**
+ * In users mode, block reads of other users' subtrees.
+ * Returns true if the path is allowed for the current user context.
+ */
+function isUserPathAllowed(relPath: string, channel: string, userId: string): boolean {
+  const normalized = relPath.replace(/\\/g, "/");
+  if (!normalized.startsWith(GLOBAL_USERS_PREFIX)) {
+    return true;
+  }
+  const userPrefix = `${GLOBAL_USERS_PREFIX}${channel}/${userId}/`;
+  return normalized.startsWith(userPrefix);
+}
+
 export function createMemoryGetTool(options: {
   config?: OpenClawConfig;
   agentSessionKey?: string;
+  messageChannel?: string;
+  senderId?: string;
 }): AnyAgentTool | null {
   return createMemoryTool({
     options,
@@ -295,6 +323,22 @@ export function createMemoryGetTool(options: {
           | "wiki"
           | "all"
           | undefined;
+
+        // Per-user isolation: block reads into other users' subtrees when in users mode.
+        const isUsersMode =
+          cfg?.memory?.userMode === "users" && options.messageChannel && options.senderId;
+        if (
+          isUsersMode &&
+          relPath &&
+          !isUserPathAllowed(relPath, options.messageChannel!, options.senderId!)
+        ) {
+          return jsonResult({
+            path: relPath,
+            text: "",
+            disabled: true,
+            error: "path not accessible",
+          });
+        }
         const { readAgentMemoryFile, resolveMemoryBackendConfig } = await loadMemoryToolRuntime();
         if (requestedCorpus === "wiki") {
           const supplement = await getSupplementMemoryReadResult({
@@ -354,4 +398,62 @@ export function createMemoryGetTool(options: {
         });
       },
   });
+}
+
+/**
+ * Creates a tool for updating the current user's profile.md in users memory mode.
+ * Returns null when userMode !== "users" or channel/userId are unavailable so
+ * the tool is simply absent in solo or unauthenticated sessions.
+ */
+export function createMemoryUpdateProfileTool(options: {
+  config?: OpenClawConfig;
+  agentSessionKey?: string;
+  messageChannel?: string;
+  senderId?: string;
+}): AnyAgentTool | null {
+  const cfg = options.config;
+  if (!cfg) {
+    return null;
+  }
+  const isUsersMode = cfg.memory?.userMode === "users";
+  const channel = options.messageChannel?.trim().toLowerCase();
+  const userId = options.senderId?.trim();
+  if (!isUsersMode || !channel || !userId) {
+    return null;
+  }
+  // Require memory to be configured so we can resolve the workspace dir.
+  const ctx = resolveMemoryToolContext(options);
+  if (!ctx) {
+    return null;
+  }
+  const profilePath = `memory/users/${channel}/${userId}/profile.md`;
+  return {
+    label: "Update User Profile",
+    name: "memory_update_profile",
+    description: `Write or update the profile for the current user at ${profilePath}. Use when you learn something worth keeping about this person: their name, preferences, running context, or important facts. The profile is injected automatically at the start of every session with this user. mode=replace (default) overwrites the file; mode=merge appends after existing content.`,
+    parameters: MemoryUpdateProfileSchema,
+    execute: async (_toolCallId, params) => {
+      const content = readStringParam(params, "content", { required: true });
+      const modeRaw = readStringParam(params, "mode");
+      const mode: "replace" | "merge" = modeRaw === "merge" ? "merge" : "replace";
+      if (!content?.trim()) {
+        return jsonResult({ ok: false, error: "content is required" });
+      }
+      try {
+        const { writeUserProfileFile } = await loadProfileToolRuntime();
+        const result = await writeUserProfileFile({
+          cfg: ctx.cfg,
+          agentId: ctx.agentId,
+          channel,
+          userId,
+          content: content.trim(),
+          mode,
+        });
+        return jsonResult({ ok: true, path: result.path, mode });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return jsonResult({ ok: false, error: message });
+      }
+    },
+  };
 }

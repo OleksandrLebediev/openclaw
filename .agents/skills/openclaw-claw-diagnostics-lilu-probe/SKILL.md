@@ -12,9 +12,9 @@ full embedded LLM snapshot; prints file:// links and on macOS can open the syste
 
 # OpenClaw claw: Lilu diagnostics probe (temporary cache trace)
 
-Use this skill when the operator wants a **short, isolated diagnostic capture** on **claw**: enable `diagnostics.cacheTrace`, send **one** CLI agent turn to `**lilu`**, then **turn diagnostics off\*\* by restoring the previous config.
+Use this skill when the operator wants a **short, isolated diagnostic capture** on **claw**: enable `diagnostics.cacheTrace`, send **one** CLI agent turn to `**lilu`**, then **turn diagnostics off by restoring the previous config.
 
-This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content). The **default flow runs from your laptop**: remote probe still writes `**/tmp/openclaw-lilu-diag-*` on claw**, then `**scp`** copies slices into `**{git-root}/.tmp/openclaw-lilu-diag/**`as`**.md**`(plus raw`**.jsonl**`trace) when`git rev-parse --show-toplevel`works. Open`**.tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.md**`in Cursor. Outside a checkout, the script falls back to`**mktemp**`under`${TMPDIR:-/tmp}`. It prints `**file://**`URLs and`**open …**` on macOS.
+This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive prompt content). The **default flow runs from your laptop**: remote probe still writes `**/tmp/openclaw-lilu-diag-*` on claw**, then `**scp`** copies slices into `**{git-root}/.tmp/openclaw-lilu-diag/`**as`**.md`**(plus raw`**.jsonl**`trace) when`git rev-parse --show-toplevel`works. Open`**.tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.md**`in Cursor. Outside a checkout, the script falls back to`**mktemp**`under`${TMPDIR:-/tmp}`. It prints `**file://**`URLs and`**open …\*\*` on macOS.
 
 ## Assumptions (override if the operator says otherwise)
 
@@ -42,7 +42,7 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 
 - `scp` and `ssh` (same SSH config that reaches `claw`).
 - Optional: **python3** for correct `file://` URLs when paths contain special characters (otherwise the script prints a naive `file://` prefix).
-- For `**{git-root}/.tmp/openclaw-lilu-diag/`**: run from **inside** the OpenClaw git checkout (any subdir), or set `**OPENCLAW_REPO_ROOT`\*\* to the repo path.
+- For `**{git-root}/.tmp/openclaw-lilu-diag/`**: run from **inside** the OpenClaw git checkout (any subdir), or set `**OPENCLAW_REPO_ROOT` to the repo path.
 
 ## Canonical behavior (docs)
 
@@ -57,7 +57,7 @@ With `includeMessages`, `includeSystem`, and `includePrompt` set to `true` (the 
 **Caveats:**
 
 - Values are **sanitized for diagnostics** (for example image/base64 redaction and sensitive-shaped fields) — good for structure and text, not always byte-identical to raw HTTP bodies.
-- The `.md` exports in this skill pull **slices** (system text, `prompt:before` text, etc.). For the **full** snapshot in one object, open **`openclaw-lilu-diag-llm-request.json`** (pretty-printed last `stream:context`), or use `jq` on the copied JSONL (local path after a run is usually `.tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl`):
+- The `.md` exports in this skill pull **slices** (system text, `prompt:before` text, etc.). For the **full** snapshot in one object, open `**openclaw-lilu-diag-llm-request.json`\*\* (pretty-printed last `stream:context`), or use `jq` on the copied JSONL (local path after a run is usually `.tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl`):
 
 ```bash
 jq -s --indent 2 'map(select(.stage == "stream:context")) | last' .tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl
@@ -67,7 +67,7 @@ jq -s --indent 2 'map(select(.stage == "stream:context")) | last' .tmp/openclaw-
 
 **Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to `/tmp` on claw (overwritten each run). Restores the original file even if the agent step fails.
 
-**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into **`{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir; prints **Primary `file://`** for the full **`openclaw-lilu-diag-llm-request.json`** and the system-prompt `.md`, then all `file://` links, **`open …`** hints, and a **Cursor-relative path**. **`file://` links only appear in the terminal** that ran the script (or copy from there). Optional **`open`** on macOS when `OPENCLAW_LILU_DIAG_OPEN=1` (default): opens the JSON when present, otherwise the system `.md`.
+**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into `**{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir; prints **Primary `file://`** for the full `**openclaw-lilu-diag-llm-request.json**`and the system-prompt`.md`, then all `file://`links,`**open …**` hints, and a **Cursor-relative path**. `**file://`links only appear in the terminal** that ran the script (or copy from there). Optional`**open`** on macOS when `OPENCLAW_LILU_DIAG_OPEN=1` (default): opens the JSON when present, otherwise the system `.md`.
 
 ```bash
 #!/usr/bin/env bash

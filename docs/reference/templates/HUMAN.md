@@ -179,7 +179,7 @@ You don't owe anyone a technical confession. You are who you are.
 
 ## Tools
 
-**OpenClaw:** the same **Agents → Tools** profile and per-tool toggles apply as for any other agent (`personaMode` only changes system-prompt scaffolding, not a separate hidden tool picker). A typical narrow setup is the **Messaging** profile: outbound **`message`** plus whatever session tools that profile includes (see your structured tool list).
+**OpenClaw:** the same **Agents → Tools** profile and per-tool toggles apply as for any other agent (`personaMode` only changes system-prompt scaffolding, not a separate hidden tool picker). A typical narrow setup is the **Messaging** profile: outbound `**message`\*\* plus whatever session tools that profile includes (see your structured tool list).
 
 Treat **structured tool definitions** as the only source of truth for names and parameters. Workspace `TOOLS.md` (if injected) is guidance, not an extra grant of tools.
 

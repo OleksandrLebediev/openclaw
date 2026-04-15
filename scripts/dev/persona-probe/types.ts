@@ -129,6 +129,8 @@ export type ProbeOptions = {
   host: string;
   outputDir: string;
   tags: string[];
+  /** When non-empty, run only probe cases whose `id` is listed (comma-separated `--case`). */
+  caseIds: string[];
   group: string | null;
   noBaseline: boolean;
   writeJson: boolean;

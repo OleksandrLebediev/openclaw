@@ -25,7 +25,7 @@
  *   --preset  <id>      `default` | `high-min` | `slow-wpm` | `tight-cap` | `all` (default: default)
  *   --reading-speed <json>  Merge over expected readingSpeed
  *   --writing-speed <json>  Merge over expected writingSpeed (writing group + combined checks)
- *   --agent   <id>      Agent ID (default: AVAILABILITY_PROBE_AGENT or PERSONA_PROBE_AGENT)
+ *   --agent   <id>      Agent ID (default: AVAILABILITY_PROBE_AGENT or PERSONA_PROBE_AGENT or "lilu")
  *   --host    <alias>   SSH host (default: AVAILABILITY_PROBE_HOST or PERSONA_PROBE_HOST or "claw")
  *   --output  <dir>     Artifacts (default: .artifacts/availability-probe)
  *   --group   <name>    Run one group: reading | writing | sanity | offline
@@ -102,13 +102,7 @@ function parseArgs(argv: string[]): AvailabilityProbeOptions {
     get("--agent") ??
     process.env["AVAILABILITY_PROBE_AGENT"] ??
     process.env["PERSONA_PROBE_AGENT"] ??
-    "";
-  if (!agent) {
-    process.stderr.write(
-      "Error: --agent <id> is required (or set AVAILABILITY_PROBE_AGENT / PERSONA_PROBE_AGENT)\n",
-    );
-    process.exit(1);
-  }
+    "lilu";
 
   const presetRaw = get("--preset") ?? "default";
   if (presetRaw !== "all" && !PRESET_IDS.has(presetRaw)) {

@@ -6,9 +6,11 @@ Docs: [https://docs.openclaw.ai](https://docs.openclaw.ai)
 
 ### Changes
 
+- Docs: human persona prompt guide now recommends a fresh `--session-id` for manual `openclaw agent` / cache-trace checks so `agent:<id>:main` transcript history does not skew `stream:context`.
+- Docs: update the `HUMAN.md` workspace template so Tools / external-scope guidance match the operator-configured tool surface (Control UI **Agents → Tools**); avoid implying capabilities the model does not have for that agent.
 - Agents/persona: for `personaMode: "human"`, omit additional assistant-only prompt sections (execution bias, docs, model aliases, reply tags, silent replies, workspace bootstrap header, runtime slash hints) and shorten workspace/messaging prose; wire flags through `resolvePersonaPromptPolicy`.
 - Agents/persona: for `personaMode: "human"`, also omit `## Safety`, `## Workspace`, `## Current Date & Time`, the `session_status` clock hint, the entire `## Messaging` block, `# Project Context` boilerplate (injected files use compact `## <path>` sections), generic `USER.md` / `TOOLS.md` / `BOOTSTRAP.md` copies, the cache-boundary seam and dynamic project context (for example `HEARTBEAT.md`), `## Heartbeats`, and `## Runtime`.
-- Agents/persona: for embedded runs with `personaMode: "human"`, restrict the merged tool list to `message` and `session_status` unless `toolsAllow`, memory flush, cron, subagent, or ACP applies (see `HUMAN_PERSONA_TOOL_ALLOWLIST` in `system-prompt-human.ts`).
+- Agents/persona: `personaMode: "human"` no longer applies a second code allowlist on top of `agents.*.tools`; human agents use the same tool profile / allowlist / MCP+LSP merge as agent mode so Control UI tool selection takes effect.
 - Agents/persona: centralize human-mode system prompt policy in `src/agents/system-prompt-human.ts` while keeping a single assembly pipeline in `system-prompt.ts`.
 - Agents/persona: omit the `## OpenClaw Self-Update` system-prompt section when `personaMode` is `human` (still omitted for minimal/none modes as before).
 - Agents/persona: omit the `## Skills (mandatory)` orchestrator block (SKILL.md scan rules) when `personaMode` is `human`; optional skills catalog text is still included when configured.

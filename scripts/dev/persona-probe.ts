@@ -7,14 +7,18 @@
  * Usage:
  *   bun scripts/dev/persona-probe.ts [options]
  *
- *   --agent   <id>      Agent ID on the remote host (default: from PERSONA_PROBE_AGENT or required)
+ *   --agent   <id>      Agent ID on the remote host (default: PERSONA_PROBE_AGENT or "lilu")
  *   --host    <alias>   SSH host alias (default: from PERSONA_PROBE_HOST or "claw")
  *   --output  <dir>     Artifact directory (default: .artifacts/persona-probe)
  *   --group   <name>    Run only one group (persona | traps | memory | tools)
+ *   --case    <id,...>  Run only probe case id(s) (comma-separated; intersects with --group / --tags)
  *   --tags    <a,b>     Run only cases with matching tags (comma-separated)
  *   --no-baseline       Skip baseline comparison and update
  *   --json              Also write raw JSON artifact alongside Markdown
  *   --concurrency <n>   Parallel probe slots (default: 1, sequential)
+ *
+ * Each probe uses a fresh explicit session (`--session-id <probeCaseId>-<uuid>`) so turns do not
+ * share transcript history; the ephemeral session row is removed from remote `sessions.json` afterward.
  */
 import path from "node:path";
 import { captureProbe } from "./persona-probe/capture.js";
@@ -33,17 +37,20 @@ function parseArgs(argv: string[]): ProbeOptions {
   };
   const has = (flag: string): boolean => args.includes(flag);
 
-  const agent = get("--agent") ?? process.env["PERSONA_PROBE_AGENT"] ?? "";
-  if (!agent) {
-    process.stderr.write("Error: --agent <id> is required (or set PERSONA_PROBE_AGENT env var)\n");
-    process.exit(1);
-  }
+  const agent = get("--agent") ?? process.env["PERSONA_PROBE_AGENT"] ?? "lilu";
 
   return {
     agent,
     host: get("--host") ?? process.env["PERSONA_PROBE_HOST"] ?? "claw",
     outputDir: get("--output") ?? ".artifacts/persona-probe",
-    tags: (get("--tags") ?? "").split(",").filter(Boolean),
+    tags: (get("--tags") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    caseIds: (get("--case") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
     group: get("--group") ?? null,
     noBaseline: has("--no-baseline"),
     writeJson: has("--json"),
@@ -61,6 +68,9 @@ function filterCases(opts: ProbeOptions) {
       return false;
     }
     if (opts.tags.length > 0 && !opts.tags.some((t) => c.tags?.includes(t))) {
+      return false;
+    }
+    if (opts.caseIds.length > 0 && !opts.caseIds.includes(c.id)) {
       return false;
     }
     return true;

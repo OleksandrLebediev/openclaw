@@ -1,6 +1,10 @@
-// Capture module: runs the agent via SSH and parses session JSONL.
 import { execFile } from "node:child_process";
+// Capture module: runs the agent via SSH and parses session JSONL.
+// Every `captureProbe` call uses a new explicit `--session-id` (`<probeId>-<uuid>`) so each probe is
+// a fresh chat session, then reads that session's transcript by deterministic path (not `ls -t`).
+import { randomUUID } from "node:crypto";
 import { promisify } from "node:util";
+import { normalizeAgentId } from "../../../src/routing/session-key.js";
 import type { ToolCall, TurnResult } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -101,49 +105,52 @@ function parseLastTurn(jsonlContent: string): { toolCalls: ToolCall[]; bootstrap
   return { toolCalls, bootstrapLoaded };
 }
 
-// ─── Session isolation ────────────────────────────────────────────────────────
+// ─── Session isolation (ephemeral explicit session per probe) ─────────────────
 
-/**
- * Temporarily removes the agent:lilu:main (or agent:<id>:main) entry from
- * sessions.json so each probe starts with a clean, history-free session.
- * Returns a restore function that puts the original entry back.
- */
-async function isolateSession(host: string, agentId: string): Promise<() => Promise<void>> {
-  const storeFile = `~/.openclaw/agents/${agentId}/sessions/sessions.json`;
-  const sessionKey = `agent:${agentId}:main`;
+/** Session store key for `openclaw agent --session-id …` (matches gateway/CLI resolution). */
+export function probeExplicitSessionStoreKey(agentId: string, sessionId: string): string {
+  return `agent:${normalizeAgentId(agentId)}:explicit:${sessionId.trim()}`;
+}
 
-  let savedEntry: string | null = null;
+/** Remote shell command body for one persona-probe agent invocation (for tests + single place for quoting). */
+export function buildPersonaProbeAgentSshCommand(opts: {
+  message: string;
+  agentId: string;
+  sessionId: string;
+}): string {
+  const safeMsg = opts.message.replace(/'/g, "'\\''");
+  const safeAgent = opts.agentId.replace(/'/g, "'\\''");
+  const safeSession = opts.sessionId.replace(/'/g, "'\\''");
+  return `openclaw agent --message '${safeMsg}' --agent '${safeAgent}' --session-id '${safeSession}' --json 2>&1`;
+}
 
+/** Default OpenClaw transcript path on the remote host for a session id (matches `resolveSessionTranscriptPathInDir`). */
+export function probeSessionJsonlRemotePath(agentId: string, sessionId: string): string {
+  const id = normalizeAgentId(agentId);
+  const safeSession = sessionId.replace(/'/g, "'\\''");
+  return `~/.openclaw/agents/${id}/sessions/${safeSession}.jsonl`;
+}
+
+async function deleteSessionStoreEntry(
+  host: string,
+  agentId: string,
+  sessionKey: string,
+): Promise<void> {
+  const id = normalizeAgentId(agentId);
+  const storeFile = `~/.openclaw/agents/${id}/sessions/sessions.json`;
   try {
     const raw = await sshRun(host, `cat '${storeFile}' 2>/dev/null || echo '{}'`);
     const store = JSON.parse(raw) as Record<string, unknown>;
-    if (sessionKey in store) {
-      savedEntry = JSON.stringify(store[sessionKey]);
-      // Remove the key so next run starts fresh
-      delete store[sessionKey];
-      const updated = JSON.stringify(store, null, 2);
-      const safeJson = updated.replace(/'/g, "'\\''");
-      await sshRun(host, `printf '%s' '${safeJson}' > '${storeFile}'`);
-    }
-  } catch {
-    // Non-fatal — if we can't isolate, proceed anyway
-  }
-
-  return async () => {
-    if (savedEntry === null) {
+    if (!(sessionKey in store)) {
       return;
     }
-    try {
-      const raw = await sshRun(host, `cat '${storeFile}' 2>/dev/null || echo '{}'`);
-      const store = JSON.parse(raw) as Record<string, unknown>;
-      store[sessionKey] = JSON.parse(savedEntry);
-      const restored = JSON.stringify(store, null, 2);
-      const safeJson = restored.replace(/'/g, "'\\''");
-      await sshRun(host, `printf '%s' '${safeJson}' > '${storeFile}'`);
-    } catch {
-      // Non-fatal
-    }
-  };
+    delete store[sessionKey];
+    const updated = JSON.stringify(store, null, 2);
+    const safeJson = updated.replace(/'/g, "'\\''");
+    await sshRun(host, `printf '%s' '${safeJson}' > '${storeFile}'`);
+  } catch {
+    // Non-fatal — best-effort cleanup so sessions.json does not fill with probe keys
+  }
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -157,36 +164,31 @@ export type CaptureParams = {
 
 /**
  * Run a probe:
- * 1. Temporarily remove the agent:main session so history doesn't contaminate results
- * 2. SSH → `openclaw agent --message '...' --agent <id> --json`
+ * 1. Pick a fresh `--session-id` (explicit session: `<probeId>-<uuid>`) so this turn has no shared history
+ * 2. SSH → `openclaw agent --message '...' --agent <id> --session-id <id> --json`
  * 3. Parse JSON response text
- * 4. Read latest session JSONL → extract tool calls + bootstrap status
- * 5. Restore the original session
+ * 4. Read `~/.openclaw/agents/<agent>/sessions/<sessionId>.jsonl` → extract tool calls + bootstrap status
+ * 5. Remove the ephemeral explicit session entry from sessions.json (best-effort)
  */
 export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
   const { host, agentId, message, probeId } = params;
 
-  const safeMsg = message.replace(/'/g, "'\\''");
-  // Isolate the session: remove :main entry so each probe starts history-free
-  const restoreSession = await isolateSession(host, agentId);
-
-  // Merge remote stderr into stdout: openclaw --json writes its JSON to stderr (gateway fallback path).
-  const agentCmd = `openclaw agent --message '${safeMsg}' --agent '${agentId}' --json 2>&1`;
+  const sessionId = `${probeId}-${randomUUID()}`;
+  const sessionKey = probeExplicitSessionStoreKey(agentId, sessionId);
+  const agentCmd = buildPersonaProbeAgentSshCommand({ message, agentId, sessionId });
+  const transcriptPath = probeSessionJsonlRemotePath(agentId, sessionId);
 
   const start = Date.now();
   let rawJson: string;
   try {
     rawJson = await sshRun(host, agentCmd);
   } catch (err) {
-    await restoreSession();
+    await deleteSessionStoreEntry(host, agentId, sessionKey);
     throw new Error(`SSH agent call failed: ${err instanceof Error ? err.message : String(err)}`, {
       cause: err,
     });
   }
   const durationMs = Date.now() - start;
-
-  // Restore the original session immediately after the probe run
-  await restoreSession();
 
   // Parse response text from JSON output.
   // Strip leading non-JSON lines (gateway fallback warnings written to stdout).
@@ -213,28 +215,22 @@ export async function captureProbe(params: CaptureParams): Promise<TurnResult> {
     response = lines[lines.length - 1] ?? "";
   }
 
-  // Find the latest session JSONL file (probe session, created after isolation)
   let sessionFile = "";
   let toolCalls: ToolCall[] = [];
   let bootstrapLoaded = false;
 
   try {
-    const targetFile = (
-      await sshRun(
-        host,
-        `ls -t ~/.openclaw/agents/${agentId}/sessions/*.jsonl 2>/dev/null | grep -v '\\.reset\\.' | head -1`,
-      )
-    ).trim();
-
-    if (targetFile) {
-      sessionFile = targetFile;
-      const jsonlContent = await sshRun(host, `cat '${sessionFile}'`);
+    const jsonlContent = await sshRun(host, `cat '${transcriptPath}' 2>/dev/null || true`);
+    if (jsonlContent.trim()) {
+      sessionFile = transcriptPath;
       const parsed = parseLastTurn(jsonlContent);
       toolCalls = parsed.toolCalls;
       bootstrapLoaded = parsed.bootstrapLoaded;
     }
   } catch {
     // Non-fatal: session JSONL reading is best-effort
+  } finally {
+    await deleteSessionStoreEntry(host, agentId, sessionKey);
   }
 
   return { probeId, message, response, toolCalls, bootstrapLoaded, durationMs, sessionFile };

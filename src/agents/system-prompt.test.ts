@@ -222,7 +222,7 @@ describe("buildAgentSystemPrompt", () => {
     const prompt = buildAgentSystemPrompt({
       workspaceDir: "/tmp/openclaw-human",
       personaMode: "human",
-      toolNames: ["message", "session_status"],
+      toolNames: ["message"],
       userTimezone: "America/Los_Angeles",
       modelAliasLines: ["- Demo: provider/model"],
       docsPath: "/tmp/openclaw-docs",

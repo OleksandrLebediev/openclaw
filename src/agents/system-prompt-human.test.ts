@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildHumanPersonaSkillCatalogLines,
-  filterToolsForHumanPersonaAllowlist,
   resolvePersonaModeForAgent,
   resolvePersonaPromptPolicy,
-  shouldRestrictToolsForHumanPersona,
 } from "./system-prompt-human.js";
 
 describe("resolvePersonaPromptPolicy", () => {
@@ -98,52 +96,6 @@ describe("resolvePersonaModeForAgent", () => {
         "main",
       ),
     ).toBe("human");
-  });
-});
-
-describe("shouldRestrictToolsForHumanPersona", () => {
-  it("is false when toolsAllow is set", () => {
-    expect(
-      shouldRestrictToolsForHumanPersona({
-        personaMode: "human",
-        toolsAllow: ["read"],
-        trigger: undefined,
-        sessionKey: "agent:lilu:main",
-      }),
-    ).toBe(false);
-  });
-
-  it("is false for cron session keys", () => {
-    expect(
-      shouldRestrictToolsForHumanPersona({
-        personaMode: "human",
-        toolsAllow: undefined,
-        trigger: undefined,
-        sessionKey: "agent:main:cron:job:run:abc",
-      }),
-    ).toBe(false);
-  });
-
-  it("is true for human main agent session when no toolsAllow", () => {
-    expect(
-      shouldRestrictToolsForHumanPersona({
-        personaMode: "human",
-        toolsAllow: undefined,
-        trigger: undefined,
-        sessionKey: "agent:lilu:main",
-      }),
-    ).toBe(true);
-  });
-});
-
-describe("filterToolsForHumanPersonaAllowlist", () => {
-  it("keeps only message and session_status", () => {
-    const out = filterToolsForHumanPersonaAllowlist([
-      { name: "exec" },
-      { name: "message" },
-      { name: "Session_Status" },
-    ]);
-    expect(out.map((t) => t.name)).toEqual(["message", "Session_Status"]);
   });
 });
 

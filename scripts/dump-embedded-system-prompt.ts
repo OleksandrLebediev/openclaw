@@ -32,9 +32,10 @@ function parseArgs(argv: string[]) {
   return { mode, out };
 }
 
+/** Minimal names for prompt assembly demos; live runs use the real tool graph from policy. */
 function stubTools(mode: "human" | "agent"): AgentTool[] {
   if (mode === "human") {
-    return [{ name: "message" }, { name: "session_status" }] as AgentTool[];
+    return [{ name: "message" }] as AgentTool[];
   }
   return [
     { name: "read" },

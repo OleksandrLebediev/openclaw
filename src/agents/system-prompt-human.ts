@@ -1,6 +1,8 @@
 /**
- * Human persona (`personaMode: "human"`) tweaks to the embedded system prompt
- * and (when applicable) the tool list exposed to the model.
+ * Human persona (`personaMode: "human"`) tweaks to the embedded system prompt.
+ * Which tools the model may call is governed by the same `agents.*.tools`
+ * profile / allowlists as agent mode (`createOpenClawCodingTools` policy pipeline);
+ * this module does not impose an extra hardcoded tool surface.
  *
  * Orchestrator / product scaffolding (tooling prose, CLI self-service, mandatory
  * skills discipline, gateway self-update) is gated here so `system-prompt.ts`
@@ -8,12 +10,8 @@
  */
 
 import type { OpenClawConfig } from "../config/config.js";
-import { isAcpSessionKey, isCronSessionKey, isSubagentSessionKey } from "../routing/session-key.js";
 
 export type PersonaMode = "agent" | "human";
-
-/** Core tools kept for human persona: outbound messaging + session/runtime facts. */
-export const HUMAN_PERSONA_TOOL_ALLOWLIST = new Set(["message", "session_status"]);
 
 /** Workspace context files dropped from the human system string (persona lives in SOUL/IDENTITY/HUMAN, etc.). */
 export const HUMAN_PERSONA_STRIPPED_CONTEXT_BASENAMES = new Set([
@@ -131,39 +129,4 @@ export function resolvePersonaModeForAgent(
     return entry.personaMode;
   }
   return config?.agents?.defaults?.personaMode;
-}
-
-/**
- * When true, embedded runs should expose only {@link HUMAN_PERSONA_TOOL_ALLOWLIST}
- * (after the normal tool graph is built). Skipped when the caller already passed
- * `toolsAllow`, for non-human agents, or for special run kinds (memory flush, cron,
- * subagents, ACP) where a full tool surface is required.
- */
-export function shouldRestrictToolsForHumanPersona(params: {
-  personaMode: PersonaMode | undefined;
-  toolsAllow?: string[] | null | undefined;
-  trigger?: string | undefined;
-  sessionKey?: string | null | undefined;
-}): boolean {
-  if (params.personaMode !== "human") {
-    return false;
-  }
-  if (params.trigger === "memory") {
-    return false;
-  }
-  if (params.toolsAllow && params.toolsAllow.length > 0) {
-    return false;
-  }
-  const sk = params.sessionKey;
-  if (isSubagentSessionKey(sk) || isCronSessionKey(sk) || isAcpSessionKey(sk)) {
-    return false;
-  }
-  return true;
-}
-
-export function filterToolsForHumanPersonaAllowlist<T extends { name: string }>(
-  tools: readonly T[],
-): T[] {
-  const allow = HUMAN_PERSONA_TOOL_ALLOWLIST;
-  return tools.filter((t) => allow.has(t.name.trim().toLowerCase()));
 }

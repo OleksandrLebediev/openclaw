@@ -63,13 +63,14 @@ These blocks are **not** inserted into the system prompt when `personaMode` is
 | **Runtime `/reasoning` hint**                      | Trailing slash-command hint after the Runtime line. Omitted for human (the Runtime block itself is also omitted).                                                                                                                                                                                                                                    |
 | **OpenAI GPT‑5 overlay** (bundled OpenAI provider) | For `openai` / `openai-codex` models whose id starts with `gpt-5`, the provider plugin normally injects `stablePrefix` (GPT‑5 output contract + punctuation), `execution_bias`, and optional `interaction_style`. For human persona the **entire** contribution is skipped so none of that text is added. See `extensions/openai/prompt-overlay.ts`. |
 
-Human mode still receives tools through the normal structured tool payload, but
-embedded runs **narrow the tool list** to `message` and `session_status` only
-(see `HUMAN_PERSONA_TOOL_ALLOWLIST` in `src/agents/system-prompt-human.ts`),
-unless the run uses an explicit `toolsAllow` list, is a memory flush
-(`trigger: "memory"`), or is a **cron**, **subagent**, or **ACP** session where a
-broader tool surface is required. The system string also drops extra
-orchestrator-style prose as described above.
+Human mode still receives tools through the normal structured tool payload.
+**Which tools are registered** follows the same resolution as agent mode:
+`agents.list[].tools` / `agents.defaults.tools` (profile, `allow` / `alsoAllow` /
+`deny`, provider overrides) plus the usual MCP/LSP bundle attachments. The Control
+UI **Agents → Tools** surface edits that same config, so a human persona agent can
+use **Messaging**, **Coding**, per-tool toggles, or explicit `allow` lists the same
+way as a personal-assistant agent. Persona mode only changes the **system string**
+shape (sections omitted above), not a second hidden tool allowlist in code.
 
 ## What typically remains (high level)
 
@@ -98,3 +99,21 @@ Policy flags live on `resolvePersonaPromptPolicy` in `src/agents/system-prompt-h
 For debugging, enable cache tracing so each run writes JSONL snapshots including
 `stream:context` (system + messages shape). See
 [Prompt caching](/reference/prompt-caching#diagnosticscachetrace-config) (`diagnostics.cacheTrace` and `OPENCLAW_CACHE_TRACE`).
+
+### Use a separate session for checks
+
+Manual `openclaw agent` probes against a real agent (for example `lilu`) default to the **main**
+session key (`agent:<id>:main`). Every run appends user/assistant turns there, so the next
+`stream:context` snapshot includes a **long message history** and no longer matches a “clean”
+prompt inspection.
+
+For prompt or cache-trace experiments, **always start an isolated session** with a fresh id:
+
+```bash
+SESSION_ID="$(uuidgen)"   # or: openssl rand -hex 12
+openclaw agent --local --agent lilu --session-id "$SESSION_ID" --message "ping" --thinking low
+```
+
+That binds the run to `agent:lilu:explicit:<SESSION_ID>` (empty transcript until you reuse the
+same id). The [Remote probes](/help/remote-probes) harness (`pnpm persona:probe`) already does
+this per case when SSHing to a host.

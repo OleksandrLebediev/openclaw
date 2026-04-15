@@ -97,11 +97,7 @@ import {
   applySkillEnvOverridesFromSnapshot,
   resolveSkillsPromptForRun,
 } from "../../skills.js";
-import {
-  filterToolsForHumanPersonaAllowlist,
-  resolvePersonaModeForAgent,
-  shouldRestrictToolsForHumanPersona,
-} from "../../system-prompt-human.js";
+import { resolvePersonaModeForAgent } from "../../system-prompt-human.js";
 import { buildSystemPromptParams } from "../../system-prompt-params.js";
 import { buildSystemPromptReport } from "../../system-prompt-report.js";
 import { sanitizeToolCallIdsForCloudCodeAssist } from "../../tool-call-id.js";
@@ -571,24 +567,11 @@ export async function runEmbeddedAttempt(
           ],
         })
       : undefined;
-    const effectiveTools = (() => {
-      const merged = [
-        ...tools,
-        ...(bundleMcpRuntime?.tools ?? []),
-        ...(bundleLspRuntime?.tools ?? []),
-      ];
-      if (
-        shouldRestrictToolsForHumanPersona({
-          personaMode: resolvedPersonaMode,
-          toolsAllow: params.toolsAllow,
-          trigger: params.trigger,
-          sessionKey: params.sessionKey,
-        })
-      ) {
-        return filterToolsForHumanPersonaAllowlist(merged);
-      }
-      return merged;
-    })();
+    const effectiveTools = [
+      ...tools,
+      ...(bundleMcpRuntime?.tools ?? []),
+      ...(bundleLspRuntime?.tools ?? []),
+    ];
     const allowedToolNames = collectAllowedToolNames({
       tools: effectiveTools,
       clientTools,

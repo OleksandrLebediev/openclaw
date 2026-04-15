@@ -67,7 +67,7 @@ jq -rs 'map(select(.stage == "stream:context")) | last' .tmp/openclaw-lilu-diag/
 
 **Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to `**/tmp` on claw\*\* (overwritten each run). Restores the original file even if the agent step fails.
 
-**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into `**{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir, print `**file://**`links, print`**open …**`, a **Cursor-relative path** hint, and optionally run `**open`** on the system prompt when `OPENCLAW_LILU_DIAG_OPEN=1` (default on Darwin).
+**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into **`{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir; prints **Primary `file://`** for the system-prompt `.md`, then all `file://` links, **`open …`** hints, and a **Cursor-relative path**. **`file://` links only appear in the terminal** that ran the script (or copy from there). Optional **`open`** on macOS when `OPENCLAW_LILU_DIAG_OPEN=1` (default).
 
 ```bash
 #!/usr/bin/env bash

@@ -52,22 +52,22 @@ This avoids leaving `cacheTrace` enabled on the server (large JSONL, sensitive p
 
 ## Full LLM snapshot (what cache trace captures)
 
-With `**includeMessages`**, `**includeSystem**`, and `**includePrompt**`set to`**true**` (the **defaults** in OpenClaw; see [Prompt caching](https://docs.openclaw.ai/reference/prompt-caching#diagnosticscachetrace-config)), each `**stream:context`** line in the cache-trace JSONL records what the embedded runtime passes into the model `**streamFn**`: `**system**`(or`systemPrompt`), `**messages**`, `**options**`, plus `**model**` metadata (`id`, `provider`, `api`). That single JSON object is the most complete practical answer to “what goes to the LLM” for most providers **without** a separate per-vendor payload logger.
+With `includeMessages`, `includeSystem`, and `includePrompt` set to `true` (the defaults in OpenClaw; see [Prompt caching](https://docs.openclaw.ai/reference/prompt-caching#diagnosticscachetrace-config)), each `stream:context` line in the cache-trace JSONL records what the embedded runtime passes into the model `streamFn`: `system` (or `systemPrompt`), `messages`, `options`, plus `model` metadata (`id`, `provider`, `api`). That single JSON object is the most complete practical answer to “what goes to the LLM” for most providers without a separate per-vendor payload logger.
 
 **Caveats:**
 
 - Values are **sanitized for diagnostics** (for example image/base64 redaction and sensitive-shaped fields) — good for structure and text, not always byte-identical to raw HTTP bodies.
-- The `**.md` exports** in this skill only pull **slices** (system text, `prompt:before` text, etc.). For the **full\*\* snapshot in one object, read the last `stream:context` from the copied JSONL (local path after a run is usually `.tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl`):
+- The `.md` exports in this skill pull **slices** (system text, `prompt:before` text, etc.). For the **full** snapshot in one object, open **`openclaw-lilu-diag-llm-request.json`** (pretty-printed last `stream:context`), or use `jq` on the copied JSONL (local path after a run is usually `.tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl`):
 
 ```bash
-jq -rs 'map(select(.stage == "stream:context")) | last' .tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl
+jq -s --indent 2 'map(select(.stage == "stream:context")) | last' .tmp/openclaw-lilu-diag/openclaw-lilu-diag-cache-trace.jsonl
 ```
 
 ## One-shot script (run from your laptop)
 
-**Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to `**/tmp` on claw\*\* (overwritten each run). Restores the original file even if the agent step fails.
+**Remote half** (inside SSH): backup config → merge `cacheTrace` → restart gateway → one `openclaw agent` → restore backup → restart gateway → export slices to `/tmp` on claw (overwritten each run). Restores the original file even if the agent step fails.
 
-**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into **`{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir; prints **Primary `file://`** for the system-prompt `.md`, then all `file://` links, **`open …`** hints, and a **Cursor-relative path**. **`file://` links only appear in the terminal** that ran the script (or copy from there). Optional **`open`** on macOS when `OPENCLAW_LILU_DIAG_OPEN=1` (default).
+**Local half** (same script on your Mac/Linux): `scp` those `/tmp/openclaw-lilu-diag-*` files into **`{git-root}/.tmp/openclaw-lilu-diag/`** (default, gitignored) or a fallback temp dir; prints **Primary `file://`** for the full **`openclaw-lilu-diag-llm-request.json`** and the system-prompt `.md`, then all `file://` links, **`open …`** hints, and a **Cursor-relative path**. **`file://` links only appear in the terminal** that ran the script (or copy from there). Optional **`open`** on macOS when `OPENCLAW_LILU_DIAG_OPEN=1` (default): opens the JSON when present, otherwise the system `.md`.
 
 ```bash
 #!/usr/bin/env bash
@@ -116,7 +116,8 @@ file_uri() {
 
 echo "openclaw-lilu-diag: local pull dir -> $LOCAL_PULL_DIR"
 if [[ -n "$REPO_ROOT_FOR_HINT" ]]; then
-  echo "openclaw-lilu-diag: Cursor — open file (repo-relative): .tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.md"
+  echo "openclaw-lilu-diag: Cursor — full LLM request (repo-relative): .tmp/openclaw-lilu-diag/openclaw-lilu-diag-llm-request.json"
+  echo "openclaw-lilu-diag: Cursor — system only (repo-relative): .tmp/openclaw-lilu-diag/openclaw-lilu-diag-system-prompt.md"
   echo "openclaw-lilu-diag: repo root: $REPO_ROOT_FOR_HINT"
 fi
 
@@ -146,10 +147,13 @@ export_diag_tmp() {
     printf '%s\n\n' "# Lilu diagnostics: prompt before model" "> Source: last \`prompt:before\` **prompt** (if logged)." ""
     jq -rs 'map(select(.stage == "prompt:before" and .prompt != null)) | last | .prompt // empty' "$TRACE_RESOLVED"
   } > /tmp/openclaw-lilu-diag-prompt-before.md || true
+  # Full embedded LLM snapshot: last stream:context (system, messages[], options, model, ids).
+  jq -s --indent 2 'map(select(.stage == "stream:context")) | last' "$TRACE_RESOLVED" > /tmp/openclaw-lilu-diag-llm-request.json || true
   cp -a "$TRACE_RESOLVED" /tmp/openclaw-lilu-diag-cache-trace.jsonl || true
   chmod 600 /tmp/openclaw-lilu-diag-system-prompt.md \
     /tmp/openclaw-lilu-diag-stream-prompt.md \
     /tmp/openclaw-lilu-diag-prompt-before.md \
+    /tmp/openclaw-lilu-diag-llm-request.json \
     /tmp/openclaw-lilu-diag-cache-trace.jsonl 2>/dev/null || true
   echo "openclaw-lilu-diag: exported under /tmp on this host:" >&2
   ls -la /tmp/openclaw-lilu-diag-* >&2 || true
@@ -190,6 +194,7 @@ REMOTE_BASES=(
   openclaw-lilu-diag-system-prompt.md
   openclaw-lilu-diag-stream-prompt.md
   openclaw-lilu-diag-prompt-before.md
+  openclaw-lilu-diag-llm-request.json
   openclaw-lilu-diag-cache-trace.jsonl
 )
 for base in "${REMOTE_BASES[@]}"; do
@@ -202,8 +207,18 @@ echo ""
 echo "=== Local files (also open this folder in Finder) ==="
 ls -la "$LOCAL_PULL_DIR" || true
 
+REQ_LOCAL="$LOCAL_PULL_DIR/openclaw-lilu-diag-llm-request.json"
+
 echo ""
-echo "=== Primary file:// (system prompt — paste in browser) ==="
+echo "=== Primary file:// (full LLM request: system + messages + options) ==="
+if [[ -f "$REQ_LOCAL" ]]; then
+  file_uri "$REQ_LOCAL"
+else
+  echo "(missing: openclaw-lilu-diag-llm-request.json)" >&2
+fi
+
+echo ""
+echo "=== Primary file:// (system prompt .md only) ==="
 if [[ -f "$SYS_LOCAL" ]]; then
   file_uri "$SYS_LOCAL"
 else
@@ -222,13 +237,19 @@ echo ""
 echo "=== Finder: reveal folder ==="
 echo "open $(printf %q "$LOCAL_PULL_DIR")"
 echo ""
-echo "=== Default app: system prompt file (macOS) ==="
+echo "=== Default app: full LLM request JSON (macOS) ==="
+echo "open $(printf %q "$REQ_LOCAL")"
+echo "=== Default app: system prompt .md (macOS) ==="
 echo "open $(printf %q "$SYS_LOCAL")"
 
 if [[ "$(uname -s)" == Darwin ]]; then
   want_open="${OPENCLAW_LILU_DIAG_OPEN:-1}"
-  if [[ "$want_open" == "1" ]] && [[ -f "$SYS_LOCAL" ]]; then
-    open "$SYS_LOCAL" || true
+  if [[ "$want_open" == "1" ]]; then
+    if [[ -f "$REQ_LOCAL" ]]; then
+      open "$REQ_LOCAL" || true
+    elif [[ -f "$SYS_LOCAL" ]]; then
+      open "$SYS_LOCAL" || true
+    fi
   fi
 fi
 
@@ -242,22 +263,23 @@ exit "$REMOTE_EXIT"
 
 After a successful trace write, the **remote** script fills these paths on **claw**:
 
-| Path                                        | Contents                                                                       |
-| ------------------------------------------- | ------------------------------------------------------------------------------ |
-| `/tmp/openclaw-lilu-diag-system-prompt.md`  | Last `stream:context` **system** string, wrapped with a Markdown title + note. |
-| `/tmp/openclaw-lilu-diag-stream-prompt.md`  | Last `stream:context` **prompt** (if logged), as Markdown.                     |
-| `/tmp/openclaw-lilu-diag-prompt-before.md`  | Last `prompt:before` **prompt** (if present), as Markdown.                     |
-| `/tmp/openclaw-lilu-diag-cache-trace.jsonl` | Full copy of the probe JSONL for offline `jq` / diff.                          |
+| Path                                        | Contents                                                                                        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `/tmp/openclaw-lilu-diag-system-prompt.md`  | Last `stream:context` **system** string, wrapped with a Markdown title + note.                  |
+| `/tmp/openclaw-lilu-diag-stream-prompt.md`  | Last `stream:context` **prompt** (if logged), as Markdown.                                      |
+| `/tmp/openclaw-lilu-diag-prompt-before.md`  | Last `prompt:before` **prompt** (if present), as Markdown.                                      |
+| `/tmp/openclaw-lilu-diag-llm-request.json`  | Last `stream:context` as one JSON object (`system`, `messages`, `options`, `model`, trace ids). |
+| `/tmp/openclaw-lilu-diag-cache-trace.jsonl` | Full copy of the probe JSONL for offline `jq` / diff.                                           |
 
-The **laptop** script copies the same filenames into `**$LOCAL_PULL_DIR`** (by default `**{git-root}/.tmp/openclaw-lilu-diag/**`) and prints `**file://\*\*` URLs for each file that actually arrived (`scp` tolerates missing remote files).
+The **laptop** script copies the same filenames into `$LOCAL_PULL_DIR` (by default `{git-root}/.tmp/openclaw-lilu-diag/`) and prints `file://` URLs for each file that actually arrived (`scp` tolerates missing remote files).
 
 Remove temp exports on claw when finished:
 
 ```bash
-ssh -o BatchMode=yes "$OPENCLAW_CLAW_SSH_HOST" 'rm -f /tmp/openclaw-lilu-diag-*.md /tmp/openclaw-lilu-diag-*.txt /tmp/openclaw-lilu-diag-cache-trace.jsonl'
+ssh -o BatchMode=yes "$OPENCLAW_CLAW_SSH_HOST" 'rm -f /tmp/openclaw-lilu-diag-*.md /tmp/openclaw-lilu-diag-*.txt /tmp/openclaw-lilu-diag-*.json /tmp/openclaw-lilu-diag-cache-trace.jsonl'
 ```
 
-Remove the **local** pull directory when finished: the script prints a ready-to-run `**rm -rf '…'`\*\* line at the end (`cleanup (local)`). Copy that line, or delete the directory shown as `local pull dir`.
+Remove the **local** pull directory when finished: the script prints a ready-to-run `rm -rf '…'` line at the end (`cleanup (local)`). Copy that line, or delete the directory shown as `local pull dir`.
 
 ## After it runs
 

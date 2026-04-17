@@ -27,6 +27,12 @@ import {
   parsePluginBindingApprovalCustomId,
   resolvePluginConversationBindingApproval,
 } from "openclaw/plugin-sdk/conversation-runtime";
+import {
+  isMessageAvailabilityCompleteEvent,
+  registerInternalHook,
+  unregisterInternalHook,
+  type InternalHookHandler,
+} from "openclaw/plugin-sdk/hook-runtime";
 import { parseExecApprovalCommandText } from "openclaw/plugin-sdk/infra-runtime";
 import { formatModelsAvailableHeader } from "openclaw/plugin-sdk/models-provider-runtime";
 import { resolveAgentRoute } from "openclaw/plugin-sdk/routing";
@@ -151,6 +157,27 @@ export const registerTelegramHandlers = ({
 
   /** business_connection_id → Telegram user id of the account that connected the bot. */
   const businessConnectionOwnerUserIds = new Map<string, number>();
+
+  /**
+   * Deferred `readBusinessMessage` calls for inbound Telegram Business messages.
+   *
+   * We do not mark the message as read at the instant it arrives — that would
+   * leak the fact that the agent is alive before it finishes the human-plausible
+   * availability wait (inactiveHours, randomDelay, reading delay). Instead, we
+   * queue the latest inbound (businessConnectionId, chatId, messageId) here and
+   * flush it via the `message:availability_complete` internal hook fired by the
+   * reply pipeline once availability waits have completed.
+   *
+   * Keyed by `${accountId}:${chatId}` so cross-account bots never flush each
+   * other's pending reads. Only one pending entry per chat is kept; marking the
+   * latest message as read implicitly clears earlier ones in that chat.
+   */
+  const pendingBusinessReads = new Map<
+    string,
+    { businessConnectionId: string; chatId: number; messageId: number }
+  >();
+  const pendingBusinessReadKey = (chatId: number | string): string =>
+    `${accountId}:${String(chatId)}`;
 
   type TextFragmentEntry = {
     key: string;
@@ -1961,23 +1988,23 @@ export const registerTelegramHandlers = ({
       return;
     }
 
-    // Mark inbound business message as read on behalf of the connected business
-    // account. Requires the `can_read_messages` business bot right; if that
-    // right is missing (or the request otherwise fails) we log and continue —
-    // read-receipt best-effort must never break inbound routing.
+    // Queue the read-receipt side effect for this inbound business message.
+    // The actual `readBusinessMessage` call is deferred until the reply
+    // pipeline finishes availability waits (inactiveHours / randomDelay /
+    // reading delay) — see the `message:availability_complete` internal hook
+    // handler below. Marking as read at arrival would visually contradict the
+    // human-plausible delay the agent is simulating for the user.
     if (
       shouldMarkTelegramBusinessMessageAsRead({
         businessConnectionId,
         sendReadReceipts: telegramCfg.sendReadReceipts,
       })
     ) {
-      try {
-        await ctx.api.readBusinessMessage(businessConnectionId, msg.chat.id, msg.message_id);
-      } catch (err) {
-        logVerbose(
-          `telegram: readBusinessMessage failed conn=${businessConnectionId} chat=${msg.chat.id} msg=${msg.message_id}: ${String(err)}`,
-        );
-      }
+      pendingBusinessReads.set(pendingBusinessReadKey(msg.chat.id), {
+        businessConnectionId,
+        chatId: msg.chat.id,
+        messageId: msg.message_id,
+      });
     }
 
     const isForum = false; // Business DMs are never forum chats
@@ -1997,4 +2024,56 @@ export const registerTelegramHandlers = ({
       businessConnectionId,
     });
   });
+
+  // Flush any pending Telegram Business read receipts once the reply pipeline
+  // has finished availability waits. This is the moment a "human" is
+  // conceptually opening the chat — marking the message as read now matches
+  // the simulated inactiveHours/randomDelay/reading delay the user sees.
+  const availabilityHookHandler: InternalHookHandler = async (event) => {
+    if (!isMessageAvailabilityCompleteEvent(event)) {
+      return;
+    }
+    const { channelId, accountId: eventAccountId, conversationId } = event.context;
+    if (channelId !== "telegram") {
+      return;
+    }
+    if (eventAccountId && eventAccountId !== accountId) {
+      return;
+    }
+    if (typeof conversationId !== "string" || conversationId.length === 0) {
+      return;
+    }
+    const chatIdStr = conversationId.startsWith("telegram:")
+      ? conversationId.slice("telegram:".length)
+      : conversationId;
+    // Business chats are always DMs — bail out for any group-shaped ids.
+    if (chatIdStr.includes(":")) {
+      return;
+    }
+    const key = pendingBusinessReadKey(chatIdStr);
+    const pending = pendingBusinessReads.get(key);
+    if (!pending) {
+      return;
+    }
+    pendingBusinessReads.delete(key);
+    try {
+      await bot.api.readBusinessMessage(
+        pending.businessConnectionId,
+        pending.chatId,
+        pending.messageId,
+      );
+    } catch (err) {
+      logVerbose(
+        `telegram: readBusinessMessage failed conn=${pending.businessConnectionId} chat=${pending.chatId} msg=${pending.messageId}: ${String(err)}`,
+      );
+    }
+  };
+  registerInternalHook("message:availability_complete", availabilityHookHandler);
+
+  return {
+    dispose: () => {
+      unregisterInternalHook("message:availability_complete", availabilityHookHandler);
+      pendingBusinessReads.clear();
+    },
+  };
 };

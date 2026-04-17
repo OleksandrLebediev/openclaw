@@ -69,6 +69,7 @@ const hookMocks = vi.hoisted(() => ({
 }));
 const internalHookMocks = vi.hoisted(() => ({
   createInternalHookEvent: vi.fn(),
+  hasInternalHookListeners: vi.fn<(type: string, action: string) => boolean>(() => false),
   triggerInternalHook: vi.fn(async () => {}),
 }));
 const acpMocks = vi.hoisted(() => ({
@@ -238,6 +239,7 @@ vi.mock("../../config/sessions/thread-info.js", () => ({
 }));
 vi.mock("./dispatch-from-config.runtime.js", () => ({
   createInternalHookEvent: internalHookMocks.createInternalHookEvent,
+  hasInternalHookListeners: internalHookMocks.hasInternalHookListeners,
   loadSessionStore: sessionStoreMocks.loadSessionStore,
   resolveSessionStoreEntry: sessionStoreMocks.resolveSessionStoreEntry,
   resolveStorePath: sessionStoreMocks.resolveStorePath,
@@ -616,6 +618,8 @@ describe("dispatchReplyFromConfig", () => {
     hookMocks.registry.plugins = [];
     internalHookMocks.createInternalHookEvent.mockClear();
     internalHookMocks.createInternalHookEvent.mockImplementation(createInternalHookEventPayload);
+    internalHookMocks.hasInternalHookListeners.mockClear();
+    internalHookMocks.hasInternalHookListeners.mockReturnValue(false);
     internalHookMocks.triggerInternalHook.mockClear();
     acpMocks.readAcpSessionEntry.mockReset();
     acpMocks.readAcpSessionEntry.mockReturnValue(null);
@@ -2407,6 +2411,66 @@ describe("dispatchReplyFromConfig", () => {
 
     expect(internalHookMocks.createInternalHookEvent).not.toHaveBeenCalled();
     expect(internalHookMocks.triggerInternalHook).not.toHaveBeenCalled();
+  });
+
+  it("fires message:availability_complete hook after availability wait when listeners are present", async () => {
+    setNoAbort();
+    const cfg = emptyConfig;
+    const dispatcher = createDispatcher();
+    const ctx = buildTestCtx({
+      Provider: "telegram",
+      Surface: "telegram",
+      SessionKey: "agent:main:telegram:12345",
+      From: "telegram:12345",
+      To: "telegram:12345",
+      AccountId: "default",
+      MessageSid: "msg-99",
+      Body: "hi",
+    });
+
+    // Only the availability_complete listener is registered.
+    internalHookMocks.hasInternalHookListeners.mockImplementation(
+      (_type: string, action: string) => action === "availability_complete",
+    );
+
+    const replyResolver = async () => ({ text: "ok" }) satisfies ReplyPayload;
+    await dispatchReplyFromConfig({ ctx, cfg, dispatcher, replyResolver });
+
+    expect(internalHookMocks.createInternalHookEvent).toHaveBeenCalledWith(
+      "message",
+      "availability_complete",
+      "agent:main:telegram:12345",
+      expect.objectContaining({
+        channelId: "telegram",
+        accountId: "default",
+        conversationId: "telegram:12345",
+        messageId: "msg-99",
+      }),
+    );
+  });
+
+  it("skips message:availability_complete hook when no listeners are registered", async () => {
+    setNoAbort();
+    const cfg = emptyConfig;
+    const dispatcher = createDispatcher();
+    const ctx = buildTestCtx({
+      Provider: "telegram",
+      Surface: "telegram",
+      SessionKey: "agent:main:telegram:12345",
+      From: "telegram:12345",
+      To: "telegram:12345",
+      Body: "hi",
+    });
+
+    internalHookMocks.hasInternalHookListeners.mockReturnValue(false);
+
+    const replyResolver = async () => ({ text: "ok" }) satisfies ReplyPayload;
+    await dispatchReplyFromConfig({ ctx, cfg, dispatcher, replyResolver });
+
+    const availabilityCalls = internalHookMocks.createInternalHookEvent.mock.calls.filter(
+      (call) => call[1] === "availability_complete",
+    );
+    expect(availabilityCalls).toHaveLength(0);
   });
 
   it("emits diagnostics when enabled", async () => {

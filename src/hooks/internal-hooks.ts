@@ -159,6 +159,39 @@ export type MessagePreprocessedHookEvent = InternalHookEvent & {
   context: MessagePreprocessedHookContext;
 };
 
+/**
+ * Fired once availability waits (offline/inactive windows, busy windows,
+ * reading delay, random jitter) have completed for an inbound turn, immediately
+ * before the agent pipeline / LLM invocation begins. Channels use this to run
+ * human-plausible side effects (e.g., read receipts for Telegram Business)
+ * that should only appear after the simulated "human opened the chat" moment.
+ *
+ * The hook is best-effort: handlers must not block the pipeline and errors
+ * are swallowed by triggerInternalHook.
+ */
+export type MessageAvailabilityCompleteHookContext = {
+  /** Channel identifier (e.g., "telegram", "whatsapp"). */
+  channelId?: string;
+  /** Provider account id (multi-account). */
+  accountId?: string;
+  /** Conversation / chat identifier (channel-native string form). */
+  conversationId?: string;
+  /** Agent id resolved for this turn. */
+  agentId?: string;
+  /** Provider-native message id for the inbound turn, when known. */
+  messageId?: string;
+  /** Inbound sender (e.g., phone number, user id). */
+  from?: string;
+  /** Additional provider-specific metadata (e.g., business_connection_id). */
+  metadata?: Record<string, unknown>;
+};
+
+export type MessageAvailabilityCompleteHookEvent = InternalHookEvent & {
+  type: "message";
+  action: "availability_complete";
+  context: MessageAvailabilityCompleteHookContext;
+};
+
 export type SessionPatchHookContext = {
   sessionEntry: SessionEntry;
   patch: SessionsPatchParams;
@@ -436,6 +469,15 @@ export function isMessagePreprocessedEvent(
     return false;
   }
   return hasStringContextField(context, "channelId");
+}
+
+export function isMessageAvailabilityCompleteEvent(
+  event: InternalHookEvent,
+): event is MessageAvailabilityCompleteHookEvent {
+  if (!isHookEventTypeAndAction(event, "message", "availability_complete")) {
+    return false;
+  }
+  return Boolean(getHookContext<MessageAvailabilityCompleteHookContext>(event));
 }
 
 export function isSessionPatchEvent(event: InternalHookEvent): event is SessionPatchHookEvent {

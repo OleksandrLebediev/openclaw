@@ -237,7 +237,7 @@ Getting the group chat ID:
 - Group sessions are isolated by group ID. Forum topics append `:topic:<threadId>` to keep topics isolated.
 - DM messages can carry `message_thread_id`; OpenClaw routes them with thread-aware session keys and preserves thread ID for replies.
 - Long polling uses grammY runner with per-chat/per-thread sequencing. Overall runner sink concurrency uses `agents.defaults.maxConcurrent`.
-- Read receipts apply only to Telegram Business: when the bot runs via a business connection with the `can_read_messages` right, OpenClaw marks inbound `business_message` updates as read (`readBusinessMessage`) by default. Toggle per account with `channels.telegram.sendReadReceipts: false`. Standard (non-business) Bot API has no read-receipt equivalent.
+- Read receipts apply only to Telegram Business: when the bot runs via a business connection with the `can_read_messages` right, OpenClaw marks inbound `business_message` updates as read (`readBusinessMessage`) by default. The receipt is deliberately deferred until after the agent's availability waits complete (inactive/active hours, busy windows, reading delay, random jitter) so it matches the simulated "human just opened the chat" moment — it never fires at the instant the message arrives. Toggle per account with `channels.telegram.sendReadReceipts: false`. Standard (non-business) Bot API has no read-receipt equivalent.
 
 ## Feature reference
 
@@ -956,7 +956,7 @@ Primary reference:
 - `channels.telegram.enabled`: enable/disable channel startup.
 - `channels.telegram.botToken`: bot token (BotFather).
 - `channels.telegram.tokenFile`: read token from a regular file path. Symlinks are rejected.
-- `channels.telegram.sendReadReceipts`: mark inbound Telegram Business messages as read via `readBusinessMessage` (default: `true`). Requires the business bot to have the `can_read_messages` right. Applies only to Telegram Business updates; non-business Bot API has no read-receipt support.
+- `channels.telegram.sendReadReceipts`: mark inbound Telegram Business messages as read via `readBusinessMessage` (default: `true`). Requires the business bot to have the `can_read_messages` right. The call is deferred until the reply pipeline finishes availability waits (inactive/active hours, busy windows, reading delay, random jitter), so the user does not see the message turn blue before the agent's simulated "opened the chat" moment. Applies only to Telegram Business updates; non-business Bot API has no read-receipt support.
 - `channels.telegram.dmPolicy`: `pairing | allowlist | open | disabled` (default: pairing).
 - `channels.telegram.allowFrom`: DM allowlist (numeric Telegram user IDs). `allowlist` requires at least one sender ID. `open` requires `"*"`. `openclaw doctor --fix` can resolve legacy `@username` entries to IDs and can recover allowlist entries from pairing-store files in allowlist migration flows.
 - `channels.telegram.actions.poll`: enable or disable Telegram poll creation (default: enabled; still requires `sendMessage`).

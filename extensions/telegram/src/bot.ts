@@ -559,7 +559,7 @@ export function createTelegramBot(opts: TelegramBotOptions): TelegramBotInstance
     telegramDeps,
   });
 
-  registerTelegramHandlers({
+  const handlersRegistration = registerTelegramHandlers({
     cfg,
     accountId: account.accountId,
     bot,
@@ -581,6 +581,7 @@ export function createTelegramBot(opts: TelegramBotOptions): TelegramBotInstance
   const originalStop = bot.stop.bind(bot);
   bot.stop = ((...args: Parameters<typeof originalStop>) => {
     threadBindingManager?.stop();
+    handlersRegistration?.dispose?.();
     return originalStop(...args);
   }) as typeof bot.stop;
 

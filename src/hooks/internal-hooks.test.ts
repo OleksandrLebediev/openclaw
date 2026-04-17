@@ -6,6 +6,7 @@ import {
   getRegisteredEventKeys,
   isAgentBootstrapEvent,
   isGatewayStartupEvent,
+  isMessageAvailabilityCompleteEvent,
   isMessageReceivedEvent,
   isMessageSentEvent,
   registerInternalHook,
@@ -306,6 +307,38 @@ describe("hooks", () => {
       expected: boolean;
     }>)("$name", ({ event, expected }) => {
       expect(isMessageSentEvent(event)).toBe(expected);
+    });
+  });
+
+  describe("isMessageAvailabilityCompleteEvent", () => {
+    it("returns true for message:availability_complete events", () => {
+      const event = createInternalHookEvent(
+        "message",
+        "availability_complete",
+        "test-session",
+        {
+          channelId: "telegram",
+          accountId: "default",
+          conversationId: "telegram:12345",
+          messageId: "42",
+          agentId: "lilu",
+        },
+      );
+      expect(isMessageAvailabilityCompleteEvent(event)).toBe(true);
+    });
+
+    it("returns false for message:received events", () => {
+      const event = createInternalHookEvent("message", "received", "test-session", {
+        from: "+1234567890",
+        content: "Hello world",
+        channelId: "telegram",
+      } satisfies MessageReceivedHookContext);
+      expect(isMessageAvailabilityCompleteEvent(event)).toBe(false);
+    });
+
+    it("returns false for non-message events", () => {
+      const event = createInternalHookEvent("command", "new", "test-session");
+      expect(isMessageAvailabilityCompleteEvent(event)).toBe(false);
     });
   });
 

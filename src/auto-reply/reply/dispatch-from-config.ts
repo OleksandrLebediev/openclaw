@@ -64,6 +64,7 @@ import {
 } from "../types.js";
 import {
   createInternalHookEvent,
+  hasInternalHookListeners,
   loadSessionStore,
   resolveSessionStoreEntry,
   resolveStorePath,
@@ -314,6 +315,32 @@ export async function dispatchReplyFromConfig(params: {
       agentId: sessionAgentId,
       waitMs: Date.now() - availabilityInboundT0,
     });
+  }
+
+  // Notify channels that availability waits are done and the pipeline is about
+  // to start real work (LLM invocation / reply delivery). Channels like
+  // Telegram Business use this to simulate a human-plausible "opened the chat"
+  // moment (e.g., sending a read receipt only after inactiveHours/randomDelay
+  // elapsed, not at the instant the message arrived).
+  if (hasInternalHookListeners("message", "availability_complete")) {
+    const messageIdForAvailabilityHook =
+      ctx.MessageSidFull ?? ctx.MessageSid ?? ctx.MessageSidFirst ?? ctx.MessageSidLast;
+    const availabilityHookEvent = createInternalHookEvent(
+      "message",
+      "availability_complete",
+      acpDispatchSessionKey ?? sessionKey ?? "",
+      {
+        channelId: (ctx.OriginatingChannel ?? ctx.Surface ?? ctx.Provider ?? channel)
+          ?.toString()
+          .toLowerCase(),
+        accountId: ctx.AccountId,
+        conversationId: ctx.OriginatingTo ?? ctx.To ?? ctx.From,
+        agentId: sessionAgentId,
+        messageId: messageIdForAvailabilityHook,
+        from: ctx.From,
+      },
+    );
+    void triggerInternalHook(availabilityHookEvent);
   }
 
   const shouldEmitVerboseProgress = createShouldEmitVerboseProgress({

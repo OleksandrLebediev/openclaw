@@ -307,6 +307,25 @@ export function resolveTelegramDirectPeerId(params: {
  * Skips outgoing sends on behalf of the business (`sender_business_bot`), bot-authored
  * echoes, and messages typed by the connected business account user.
  */
+/**
+ * Whether OpenClaw should call `readBusinessMessage` to mark an inbound
+ * Telegram Business message as read on behalf of the connected business
+ * account. Defaults to true and can be opted out via
+ * `channels.telegram.sendReadReceipts: false`.
+ *
+ * Only business messages are eligible — the standard Telegram Bot API has no
+ * read-receipt equivalent.
+ */
+export function shouldMarkTelegramBusinessMessageAsRead(params: {
+  businessConnectionId?: string;
+  sendReadReceipts?: boolean;
+}): params is { businessConnectionId: string; sendReadReceipts?: boolean } {
+  if (typeof params.businessConnectionId !== "string" || params.businessConnectionId.length === 0) {
+    return false;
+  }
+  return params.sendReadReceipts !== false;
+}
+
 export function shouldSkipTelegramBusinessInboundMessage(params: {
   msg: Message;
   botUserId?: number;

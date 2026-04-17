@@ -312,6 +312,12 @@ export const TelegramAccountSchemaBase = z
     heartbeat: ChannelHeartbeatVisibilitySchema,
     healthMonitor: ChannelHealthMonitorSchema,
     linkPreview: z.boolean().optional(),
+    sendReadReceipts: z
+      .boolean()
+      .optional()
+      .describe(
+        "Mark inbound Telegram Business messages as read on behalf of the connected business account via readBusinessMessage. Requires the business bot to have the can_read_messages right. Applies only to business_message updates; the standard Bot API has no read-receipt equivalent. Default: true.",
+      ),
     silentErrorReplies: z.boolean().optional(),
     responsePrefix: z.string().optional(),
     ackReaction: z.string().optional(),

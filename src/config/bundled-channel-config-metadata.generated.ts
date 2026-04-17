@@ -5606,6 +5606,56 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
     },
   },
   {
+    pluginId: "instagram",
+    channelId: "instagram",
+    label: "Instagram",
+    description: "Instagram DMs via Meta Messaging API — requires a Business or Creator account.",
+    schema: {
+      $schema: "http://json-schema.org/draft-07/schema#",
+      type: "object",
+      properties: {
+        enabled: {
+          type: "boolean",
+        },
+        accessToken: {
+          type: "string",
+        },
+        appSecret: {
+          type: "string",
+        },
+        webhookVerifyToken: {
+          type: "string",
+        },
+        webhookPath: {
+          type: "string",
+        },
+        name: {
+          type: "string",
+        },
+        allowFrom: {
+          type: "array",
+          items: {
+            anyOf: [
+              {
+                type: "string",
+              },
+              {
+                type: "number",
+              },
+            ],
+          },
+        },
+        dmPolicy: {
+          default: "pairing",
+          type: "string",
+          enum: ["open", "allowlist", "pairing", "disabled"],
+        },
+      },
+      required: ["dmPolicy"],
+      additionalProperties: false,
+    },
+  },
+  {
     pluginId: "irc",
     channelId: "irc",
     label: "IRC",
@@ -13146,6 +13196,11 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
         linkPreview: {
           type: "boolean",
         },
+        sendReadReceipts: {
+          description:
+            "Mark inbound Telegram Business messages as read on behalf of the connected business account via readBusinessMessage. Requires the business bot to have the can_read_messages right. Applies only to business_message updates; the standard Bot API has no read-receipt equivalent. Default: true.",
+          type: "boolean",
+        },
         silentErrorReplies: {
           type: "boolean",
         },
@@ -14179,6 +14234,11 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
               linkPreview: {
                 type: "boolean",
               },
+              sendReadReceipts: {
+                description:
+                  "Mark inbound Telegram Business messages as read on behalf of the connected business account via readBusinessMessage. Requires the business bot to have the can_read_messages right. Applies only to business_message updates; the standard Bot API has no read-receipt equivalent. Default: true.",
+                type: "boolean",
+              },
               silentErrorReplies: {
                 type: "boolean",
               },
@@ -14332,6 +14392,10 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
       silentErrorReplies: {
         label: "Telegram Silent Error Replies",
         help: "When true, Telegram bot replies marked as errors are sent silently (no notification sound). Default: false.",
+      },
+      sendReadReceipts: {
+        label: "Telegram Send Read Receipts (Business)",
+        help: "Mark inbound Telegram Business messages as read on behalf of the connected business account (readBusinessMessage). Requires the bot to have the can_read_messages business right. Applies only to Telegram Business messages; the standard Bot API has no read-receipt support. Default: true.",
       },
       apiRoot: {
         label: "Telegram API Root URL",

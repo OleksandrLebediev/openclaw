@@ -71,6 +71,7 @@ import {
   resolveTelegramForumFlag,
   resolveTelegramForumThreadId,
   resolveTelegramGroupAllowFromContext,
+  shouldMarkTelegramBusinessMessageAsRead,
   shouldSkipTelegramBusinessInboundMessage,
   withResolvedTelegramForumFlag,
 } from "./bot/helpers.js";
@@ -1958,6 +1959,25 @@ export const registerTelegramHandlers = ({
         `telegram: skip business_message (outgoing or business owner) conn=${businessConnectionId} chat=${msg.chat.id}`,
       );
       return;
+    }
+
+    // Mark inbound business message as read on behalf of the connected business
+    // account. Requires the `can_read_messages` business bot right; if that
+    // right is missing (or the request otherwise fails) we log and continue —
+    // read-receipt best-effort must never break inbound routing.
+    if (
+      shouldMarkTelegramBusinessMessageAsRead({
+        businessConnectionId,
+        sendReadReceipts: telegramCfg.sendReadReceipts,
+      })
+    ) {
+      try {
+        await ctx.api.readBusinessMessage(businessConnectionId, msg.chat.id, msg.message_id);
+      } catch (err) {
+        logVerbose(
+          `telegram: readBusinessMessage failed conn=${businessConnectionId} chat=${msg.chat.id} msg=${msg.message_id}: ${String(err)}`,
+        );
+      }
     }
 
     const isForum = false; // Business DMs are never forum chats

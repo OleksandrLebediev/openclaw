@@ -13,6 +13,7 @@ import {
   resolveTelegramDirectPeerId,
   resolveTelegramForumFlag,
   resolveTelegramForumThreadId,
+  shouldMarkTelegramBusinessMessageAsRead,
   shouldSkipTelegramBusinessInboundMessage,
 } from "./helpers.js";
 
@@ -216,6 +217,35 @@ describe("shouldSkipTelegramBusinessInboundMessage", () => {
 
   it("returns false when from is missing and there is no sender_business_bot", () => {
     expect(shouldSkipTelegramBusinessInboundMessage({ msg: privateChatMsg({}) })).toBe(false);
+  });
+});
+
+describe("shouldMarkTelegramBusinessMessageAsRead", () => {
+  it("returns true by default for business messages", () => {
+    expect(shouldMarkTelegramBusinessMessageAsRead({ businessConnectionId: "bc-1" })).toBe(true);
+  });
+
+  it("returns true when explicitly enabled", () => {
+    expect(
+      shouldMarkTelegramBusinessMessageAsRead({
+        businessConnectionId: "bc-1",
+        sendReadReceipts: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("returns false when explicitly disabled", () => {
+    expect(
+      shouldMarkTelegramBusinessMessageAsRead({
+        businessConnectionId: "bc-1",
+        sendReadReceipts: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("returns false when there is no business connection", () => {
+    expect(shouldMarkTelegramBusinessMessageAsRead({})).toBe(false);
+    expect(shouldMarkTelegramBusinessMessageAsRead({ businessConnectionId: "" })).toBe(false);
   });
 });
 

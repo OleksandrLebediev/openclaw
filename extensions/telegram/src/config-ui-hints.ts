@@ -93,6 +93,10 @@ export const telegramChannelConfigUiHints = {
     label: "Telegram Silent Error Replies",
     help: "When true, Telegram bot replies marked as errors are sent silently (no notification sound). Default: false.",
   },
+  sendReadReceipts: {
+    label: "Telegram Send Read Receipts (Business)",
+    help: "Mark inbound Telegram Business messages as read on behalf of the connected business account (readBusinessMessage). Requires the bot to have the can_read_messages business right. Applies only to Telegram Business messages; the standard Bot API has no read-receipt support. Default: true.",
+  },
   apiRoot: {
     label: "Telegram API Root URL",
     help: "Custom Telegram Bot API root URL. Use for self-hosted Bot API servers (https://github.com/tdlib/telegram-bot-api) or reverse proxies in regions where api.telegram.org is blocked.",

@@ -193,6 +193,15 @@ export type TelegramAccountConfig = {
   linkPreview?: boolean;
   /** Send Telegram bot error replies silently (no notification sound). Default: false. */
   silentErrorReplies?: boolean;
+  /**
+   * Mark inbound Telegram Business messages as read on behalf of the
+   * connected business account via `readBusinessMessage`. Requires the bot
+   * to have the `can_read_messages` business right.
+   *
+   * Applies only to Telegram Business (`business_message`) updates — the
+   * standard Bot API has no read-receipt equivalent. Default: true.
+   */
+  sendReadReceipts?: boolean;
   /** Controls outbound error reporting: always, once per cooldown window, or silent. */
   errorPolicy?: "always" | "once" | "silent";
   /** Cooldown window for `errorPolicy: "once"` in milliseconds. */
